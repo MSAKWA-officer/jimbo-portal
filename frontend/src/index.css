@@ -1,0 +1,42 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+  UKUBWA WA HERUFI (FONT SIZE) WA MFUMO MZIMA
+  --------------------------------------------
+  Tailwind (text-sm, text-base, text-lg, text-xl, n.k.) inatumia "rem",
+  ambayo inategemea font-size ya <html>. Kwa hiyo ukibadilisha thamani
+  hapa chini pekee, HERUFI ZOTE kwenye mfumo mzima (sidebar, majedwali,
+  fomu, vitufe, n.k.) zinabadilika kwa uwiano sawa - bila kugusa faili
+  nyingine yoyote.
+
+  100% = 1rem = 16px (hii ndiyo thamani ya sasa - "size 16")
+*/
+html {
+  font-size: 100%;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  min-height: 100%;
+}
+
+/*
+  AINA YA HERUFI (FONT FAMILY) YA MFUMO MZIMA
+  ---------------------------------------------
+  Kwa vile hakuna component yoyote (Sidebar, majedwali, fomu, n.k.)
+  inayoweka font-family yake yenyewe, ubadilishaji hapa chini pekee
+  unabadilisha herufi za mfumo mzima kuwa Times New Roman.
+*/
+body {
+  font-family: 'Times New Roman', Times, serif;
+  font-size: 18px;
+  background: #f5f7fb;
+}
