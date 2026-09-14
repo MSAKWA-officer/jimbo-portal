@@ -22,13 +22,25 @@ const IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png'];
 
 // Build a viewable URL for the uploaded letter from the path stored by
 // multer on the backend (which may be an absolute filesystem path).
+// NOTE: the backend serves /uploads from the server root (see server.js),
+// while api.defaults.baseURL usually includes an "/api" suffix
+// (e.g. https://jimbo-backend-sz7p.onrender.com/api). So we can't just
+// prepend the baseURL directly — we need the origin only.
 const getLetterUrl = (identificationLetterPath) => {
   if (!identificationLetterPath) return null;
 
   const fileName = identificationLetterPath.split(/[\\/]/).pop();
-  const base = (api.defaults.baseURL || '').replace(/\/$/, '');
+  const rawBase = api.defaults.baseURL || '';
 
-  return `${base}/uploads/letters/${fileName}`;
+  let origin;
+  try {
+    origin = new URL(rawBase).origin;
+  } catch {
+    // Fallback: strip a trailing "/api" (with or without slash) manually.
+    origin = rawBase.replace(/\/api\/?$/, '').replace(/\/$/, '');
+  }
+
+  return `${origin}/uploads/letters/${fileName}`;
 };
 
 export default function ApplicationList() {
