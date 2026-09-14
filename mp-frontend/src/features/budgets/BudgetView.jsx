@@ -3,12 +3,12 @@ import { useParams, Link } from 'react-router-dom';
 import api from '../../api/axios';
 
 const currency = (n) =>
-  new Intl.NumberFormat('sw-TZ', { maximumFractionDigits: 0 }).format(Number(n) || 0);
+  new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(Number(n) || 0);
 
 const formatDate = (d) =>
-  d ? new Date(d).toLocaleDateString('sw-TZ', { year: 'numeric', month: 'long', day: 'numeric' }) : '—';
+  d ? new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '—';
 
-const formatDateTime = (d) => (d ? new Date(d).toLocaleString('sw-TZ') : '—');
+const formatDateTime = (d) => (d ? new Date(d).toLocaleString('en-US') : '—');
 
 export default function BudgetView() {
   const { id } = useParams();
@@ -29,7 +29,7 @@ export default function BudgetView() {
       const res = await api.get(`/budgets/${id}`);
       setBudget(res.data);
     } catch (err) {
-      setError(err.response?.data?.message || 'Imeshindwa kupakia taarifa za bajeti.');
+      setError(err.response?.data?.message || 'Failed to load budget details.');
     } finally {
       setLoading(false);
     }
@@ -40,12 +40,12 @@ export default function BudgetView() {
     setRecordsError('');
 
     try {
-      // Matumizi (expenditures) yote yaliyorekodiwa dhidi ya bajeti hii -
-      // yanaonyesha kiasi kilichotumika na kwa ajili ya nini (maelezo/ombi).
+      // All expenditures recorded against this budget -
+      // shows the amount spent and what it was for (description/request).
       const res = await api.get('/expenditures', { params: { budgetId: id } });
       setRecords(res.data);
     } catch (err) {
-      setRecordsError(err.response?.data?.message || 'Imeshindwa kupakia rekodi za matumizi.');
+      setRecordsError(err.response?.data?.message || 'Failed to load expenditure records.');
     } finally {
       setRecordsLoading(false);
     }
@@ -58,20 +58,20 @@ export default function BudgetView() {
   }, [id]);
 
   const removeRecord = async (recordId) => {
-    if (!confirm('Una uhakika unataka kufuta rekodi hii ya tumizi? Salio la bajeti litarejeshwa.')) return;
+    if (!confirm('Are you sure you want to delete this expenditure record? The budget balance will be restored.')) return;
 
     try {
       await api.delete(`/expenditures/${recordId}`);
       await Promise.all([load(), loadRecords()]);
     } catch (err) {
-      setRecordsError(err.response?.data?.message || 'Imeshindwa kufuta rekodi.');
+      setRecordsError(err.response?.data?.message || 'Failed to delete the record.');
     }
   };
 
   if (loading) {
     return (
       <div className="max-w-5xl mx-auto px-4 py-8 bg-white border rounded-xl shadow-sm">
-        <p className="text-sm text-gray-500">Inapakia...</p>
+        <p className="text-sm text-gray-500">Loading...</p>
       </div>
     );
   }
@@ -80,10 +80,10 @@ export default function BudgetView() {
     return (
       <div className="max-w-5xl mx-auto px-4 py-8 bg-white border rounded-xl shadow-sm">
         <div className="text-sm bg-red-50 text-red-700 px-3 py-2 rounded-md mb-4">
-          {error || 'Bajeti haikuonekana.'}
+          {error || 'Budget not found.'}
         </div>
         <Link to="/budgets" className="text-sm text-[#0B2A4A] hover:underline">
-          &larr; Rudi kwenye Orodha
+          &larr; Back to List
         </Link>
       </div>
     );
@@ -102,10 +102,10 @@ export default function BudgetView() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">
-            Bajeti ya {budget.category?.name || '—'}
+            Budget for {budget.category?.name || '—'}
           </h1>
           <p className="text-sm text-gray-500 mt-1">
-            Mwaka wa Fedha: {budget.fiscalYear}
+            Fiscal Year: {budget.fiscalYear}
           </p>
         </div>
 
@@ -114,22 +114,22 @@ export default function BudgetView() {
             to={`/budgets/${budget.id}/edit`}
             className="bg-[#0B2A4A] hover:bg-[#123B63] text-white text-sm font-medium px-4 py-2 rounded-md"
           >
-            Hariri Bajeti
+            Edit Budget
           </Link>
           <Link to="/budgets" className="text-sm text-[#0B2A4A] hover:underline">
-            &larr; Rudi
+            &larr; Back
           </Link>
         </div>
       </div>
 
-      {/* MUHTASARI WA KIFEDHA */}
+      {/* FINANCIAL SUMMARY */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <div className="bg-white border rounded-xl p-5 shadow-sm">
-          <p className="text-sm text-gray-500">Kilichotengwa</p>
+          <p className="text-sm text-gray-500">Allocated</p>
           <p className="text-2xl font-bold text-[#0B2A4A] mt-1">TZS {currency(allocated)}</p>
         </div>
         <div className="bg-white border rounded-xl p-5 shadow-sm">
-          <p className="text-sm text-gray-500">Kilichotumika</p>
+          <p className="text-sm text-gray-500">Spent</p>
           <p className="text-2xl font-bold text-gray-800 mt-1">TZS {currency(spent)}</p>
           <div className="w-full h-1.5 bg-gray-100 rounded-full mt-2">
             <div
@@ -139,7 +139,7 @@ export default function BudgetView() {
           </div>
         </div>
         <div className="bg-white border rounded-xl p-5 shadow-sm">
-          <p className="text-sm text-gray-500">Salio</p>
+          <p className="text-sm text-gray-500">Remaining Balance</p>
           <p className={`text-2xl font-bold mt-1 ${remaining < 0 ? 'text-red-600' : 'text-green-700'}`}>
             TZS {currency(remaining)}
           </p>
@@ -148,19 +148,19 @@ export default function BudgetView() {
 
       {budget.notes && (
         <div className="mb-6">
-          <h2 className="text-sm font-semibold text-gray-700 mb-2">Maelezo ya Bajeti</h2>
+          <h2 className="text-sm font-semibold text-gray-700 mb-2">Budget Notes</h2>
           <p className="text-sm text-gray-700 border rounded-lg p-4 whitespace-pre-wrap">{budget.notes}</p>
         </div>
       )}
 
-      {/* SEHEMU YA REKODI ZA MATUMIZI - kinachoonyesha kiasi kilichotumika na kwa ajili ya nini */}
+      {/* EXPENDITURE RECORDS SECTION - shows the amount spent and what it was for */}
       <div className="border-t pt-6">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h2 className="text-lg font-bold text-gray-800">Rekodi za Matumizi</h2>
+            <h2 className="text-lg font-bold text-gray-800">Expenditure Records</h2>
             <p className="text-sm text-gray-500 mt-1">
-              Kila kiasi kilichotumika katika kategoria ya{' '}
-              <span className="font-medium">{budget.category?.name || 'hii'}</span> na kilitumika kwa ajili ya nini.
+              Every amount spent under the{' '}
+              <span className="font-medium">{budget.category?.name || 'this'}</span> category and what it was used for.
             </p>
           </div>
 
@@ -168,7 +168,7 @@ export default function BudgetView() {
             to="/expenditures/create"
             className="bg-[#0B2A4A] hover:bg-[#123B63] text-white text-sm font-medium px-4 py-2 rounded-md whitespace-nowrap"
           >
-            + Rekodi Tumizi Jipya
+            + Record New Expenditure
           </Link>
         </div>
 
@@ -177,9 +177,9 @@ export default function BudgetView() {
         )}
 
         <div className="bg-gray-50 border rounded-lg px-4 py-3 mb-4 flex items-center justify-between">
-          <span className="text-sm text-gray-600">Idadi ya Rekodi: {records.length}</span>
+          <span className="text-sm text-gray-600">Number of Records: {records.length}</span>
           <span className="text-sm font-semibold text-gray-800">
-            Jumla Iliyorekodiwa: TZS {currency(recordsTotal)}
+            Total Recorded: TZS {currency(recordsTotal)}
           </span>
         </div>
 
@@ -187,24 +187,24 @@ export default function BudgetView() {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 text-gray-600 text-left">
               <tr>
-                <th className="px-4 py-3">Tarehe</th>
-                <th className="px-4 py-3">Kilichonunuliwa / Maelezo</th>
-                <th className="px-4 py-3">Ombi (Tracking No.)</th>
-                <th className="px-4 py-3">Kiasi</th>
-                <th className="px-4 py-3">Aliyerekodi</th>
-                <th className="px-4 py-3">Vitendo</th>
+                <th className="px-4 py-3">Date</th>
+                <th className="px-4 py-3">Item / Description</th>
+                <th className="px-4 py-3">Request (Tracking No.)</th>
+                <th className="px-4 py-3">Amount</th>
+                <th className="px-4 py-3">Recorded By</th>
+                <th className="px-4 py-3">Actions</th>
               </tr>
             </thead>
 
             <tbody className="divide-y">
               {recordsLoading ? (
                 <tr>
-                  <td className="px-4 py-4 text-gray-500" colSpan={6}>Inapakia rekodi...</td>
+                  <td className="px-4 py-4 text-gray-500" colSpan={6}>Loading records...</td>
                 </tr>
               ) : records.length === 0 ? (
                 <tr>
                   <td className="px-4 py-4 text-gray-500" colSpan={6}>
-                    Hakuna rekodi ya matumizi bado kwenye bajeti hii.
+                    No expenditure records yet for this budget.
                   </td>
                 </tr>
               ) : (
@@ -213,9 +213,9 @@ export default function BudgetView() {
                     <td className="px-4 py-3 whitespace-nowrap">{formatDate(r.expenditureDate)}</td>
                     <td className="px-4 py-3">
                       <p className="text-gray-800">
-                        {r.description || <span className="text-gray-400">Hakuna maelezo</span>}
+                        {r.description || <span className="text-gray-400">No description</span>}
                       </p>
-                      <p className="text-xs text-gray-500 mt-0.5">Ilirekodiwa: {formatDateTime(r.createdAt)}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">Recorded: {formatDateTime(r.createdAt)}</p>
                     </td>
                     <td className="px-4 py-3">
                       <Link
@@ -236,19 +236,19 @@ export default function BudgetView() {
                           to={`/expenditures/${r.id}`}
                           className="text-gray-600 hover:underline text-xs font-medium"
                         >
-                          Angalia
+                          View
                         </Link>
                         <Link
                           to={`/expenditures/${r.id}/edit`}
                           className="text-[#0B2A4A] hover:underline text-xs font-medium"
                         >
-                          Hariri
+                          Edit
                         </Link>
                         <button
                           onClick={() => removeRecord(r.id)}
                           className="text-red-600 hover:underline text-xs font-medium"
                         >
-                          Futa
+                          Delete
                         </button>
                       </div>
                     </td>
