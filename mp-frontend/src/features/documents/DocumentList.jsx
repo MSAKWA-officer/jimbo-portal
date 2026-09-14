@@ -1,6 +1,17 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../../api/axios';
+import { useAuth } from '../../context/AuthContext';
+
+// Tumia API base URL kujenga link ya kufungua faili iliyopakiwa (uploads static)
+const API_ORIGIN = (api.defaults.baseURL || '').replace(/\/api\/?$/, '');
+
+const getFileUrl = (doc) => {
+  if (!doc?.filePath) return null;
+  const normalized = doc.filePath.replace(/\\/g, '/');
+  const relativePath = normalized.split('/backend/')[1] || normalized;
+  return `${API_ORIGIN}/${relativePath}`;
+};
 
 const statusLabels = {
   pending: 'Awaiting Approval',
@@ -22,12 +33,16 @@ const typeLabels = {
 };
 
 export default function DocumentList() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
+
   const [list, setList] = useState([]);
   const [statusFilter, setStatusFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [search, setSearch] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState(null);
 
   const load = async () => {
     setLoading(true);
@@ -62,6 +77,22 @@ export default function DocumentList() {
     load();
   };
 
+  const handleDelete = async (doc) => {
+    if (!window.confirm(`Are you sure you want to delete "${doc.title}"?`)) return;
+
+    setDeletingId(doc.id);
+    setError('');
+
+    try {
+      await api.delete(`/documents/${doc.id}`);
+      setList((prev) => prev.filter((item) => item.id !== doc.id));
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to delete the document.');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 bg-white border rounded-xl shadow-sm">
 
@@ -71,6 +102,10 @@ export default function DocumentList() {
           <h1 className="text-3xl font-bold text-black">
             Documents for Approval
           </h1>
+
+          <p className="text-base text-black mt-1">
+            Letters, documents and reports shared for approval.
+          </p>
         </div>
 
         <Link
@@ -172,7 +207,21 @@ export default function DocumentList() {
                   </td>
 
                   <td className="px-4 py-3">
-                    <span className="text-black text-sm">📎 {doc.fileName}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-black text-sm truncate max-w-[160px]">
+                        📎 {doc.fileName}
+                      </span>
+
+                      <a
+                        href={getFileUrl(doc)}
+                        target="_blank"
+                        rel="noreferrer"
+                        title="View document"
+                        className="text-[#0B2A4A] hover:underline text-sm font-semibold whitespace-nowrap"
+                      >
+                        👁 View
+                      </a>
+                    </div>
                   </td>
 
                   <td className="px-4 py-3 text-black">
@@ -186,12 +235,25 @@ export default function DocumentList() {
                   </td>
 
                   <td className="px-4 py-3">
-                    <Link
-                      to={`/documents/${doc.id}`}
-                      className="text-[#0B2A4A] hover:underline text-sm font-semibold"
-                    >
-                      Open / Approve
-                    </Link>
+                    <div className="flex items-center gap-3">
+                      <Link
+                        to={`/documents/${doc.id}`}
+                        className="text-[#0B2A4A] hover:underline text-sm font-semibold"
+                      >
+                        Open / Approve
+                      </Link>
+
+                      {isAdmin && (
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(doc)}
+                          disabled={deletingId === doc.id}
+                          className="text-red-600 hover:underline text-sm font-semibold disabled:opacity-50"
+                        >
+                          {deletingId === doc.id ? 'Deleting...' : '🗑 Delete'}
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))
