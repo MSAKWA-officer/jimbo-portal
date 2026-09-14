@@ -23,7 +23,7 @@ const { sequelize, User } = require('../models');
 
 const ADMIN_FULL_NAME = process.env.ADMIN_FULL_NAME || 'Admin';
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@mfumo.co.tz';
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'siri123';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Mbunge123!';
 const ADMIN_PHONE = process.env.ADMIN_PHONE || null;
 
 const seedAdmin = async () => {
