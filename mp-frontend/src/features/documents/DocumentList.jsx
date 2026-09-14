@@ -3,15 +3,16 @@ import { Link } from 'react-router-dom';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 
-// Tumia API base URL kujenga link ya kufungua faili iliyopakiwa (uploads static)
+// baseURL ya axios ina `/api` mwishoni, lakini faili (uploads) zinatolewa
+// na backend kwenye mzizi (`/uploads`), siyo `/api/uploads`. Kwa hiyo
+// tunaondoa `/api` kwenye baseURL kabla ya kujenga fileUrl.
 const API_ORIGIN = (api.defaults.baseURL || '').replace(/\/api\/?$/, '');
 
-const getFileUrl = (doc) => {
-  if (!doc?.filePath) return null;
-  const normalized = doc.filePath.replace(/\\/g, '/');
-  const relativePath = normalized.split('/backend/')[1] || normalized;
-  return `${API_ORIGIN}/${relativePath}`;
-};
+const getFileUrl = (doc) =>
+  `${API_ORIGIN}/${
+    (doc.filePath || '').replace(/\\/g, '/').split('/backend/')[1] ||
+    doc.filePath
+  }`;
 
 const statusLabels = {
   pending: 'Awaiting Approval',
@@ -85,7 +86,7 @@ export default function DocumentList() {
 
     try {
       await api.delete(`/documents/${doc.id}`);
-      setList((prev) => prev.filter((item) => item.id !== doc.id));
+      setList((prev) => prev.filter((d) => d.id !== doc.id));
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to delete the document.');
     } finally {
@@ -208,16 +209,14 @@ export default function DocumentList() {
 
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
-                      <span className="text-black text-sm truncate max-w-[160px]">
-                        📎 {doc.fileName}
-                      </span>
+                      <span className="text-black text-sm">📎 {doc.fileName}</span>
 
                       <a
                         href={getFileUrl(doc)}
                         target="_blank"
                         rel="noreferrer"
-                        title="View document"
                         className="text-[#0B2A4A] hover:underline text-sm font-semibold whitespace-nowrap"
+                        title="View the file"
                       >
                         👁 View
                       </a>
@@ -238,19 +237,18 @@ export default function DocumentList() {
                     <div className="flex items-center gap-3">
                       <Link
                         to={`/documents/${doc.id}`}
-                        className="text-[#0B2A4A] hover:underline text-sm font-semibold"
+                        className="text-[#0B2A4A] hover:underline text-sm font-semibold whitespace-nowrap"
                       >
                         Open / Approve
                       </Link>
 
                       {isAdmin && (
                         <button
-                          type="button"
                           onClick={() => handleDelete(doc)}
                           disabled={deletingId === doc.id}
-                          className="text-red-600 hover:underline text-sm font-semibold disabled:opacity-50"
+                          className="text-red-600 hover:underline text-sm font-semibold disabled:text-gray-400 whitespace-nowrap"
                         >
-                          {deletingId === doc.id ? 'Deleting...' : '🗑 Delete'}
+                          {deletingId === doc.id ? 'Deleting...' : 'Delete'}
                         </button>
                       )}
                     </div>
