@@ -8,11 +8,23 @@ import { useAuth } from '../../context/AuthContext';
 // tunaondoa `/api` kwenye baseURL kabla ya kujenga fileUrl.
 const API_ORIGIN = (api.defaults.baseURL || '').replace(/\/api\/?$/, '');
 
-const getFileUrl = (doc) =>
-  `${API_ORIGIN}/${
-    (doc.filePath || '').replace(/\\/g, '/').split('/backend/')[1] ||
-    doc.filePath
-  }`;
+// filePath iliyohifadhiwa database ni njia kamili (absolute path) ya
+// kwenye seva (mf. "/opt/render/project/src/uploads/documents/xxx.png"),
+// na hiyo njia inatofautiana kutegemea seva/hosting. Badala ya kujaribu
+// kukisia muundo mzima wa njia (kama kutafuta "/backend/"), tunachukua
+// sehemu inayoanzia "uploads/" pekee — ndiyo njia halisi ambayo backend
+// inaitolea (app.use('/uploads', ...)).
+const getFileUrl = (doc) => {
+  const normalized = (doc.filePath || '').replace(/\\/g, '/');
+  const marker = 'uploads/';
+  const idx = normalized.indexOf(marker);
+  const relativePath = idx !== -1 ? normalized.slice(idx) : `uploads/${normalized.split('/').pop()}`;
+
+  return `${API_ORIGIN}/${relativePath}`;
+};
+
+const isImageFile = (fileName = '') => /\.(jpe?g|png|gif|webp)$/i.test(fileName);
+const isPdfFile = (fileName = '') => /\.pdf$/i.test(fileName);
 
 const statusLabels = {
   pending: 'Awaiting Approval',
@@ -44,6 +56,7 @@ export default function DocumentList() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState(null);
+  const [previewDoc, setPreviewDoc] = useState(null);
 
   const load = async () => {
     setLoading(true);
@@ -211,15 +224,13 @@ export default function DocumentList() {
                     <div className="flex items-center gap-2">
                       <span className="text-black text-sm">📎 {doc.fileName}</span>
 
-                      <a
-                        href={getFileUrl(doc)}
-                        target="_blank"
-                        rel="noreferrer"
+                      <button
+                        onClick={() => setPreviewDoc(doc)}
                         className="text-[#0B2A4A] hover:underline text-sm font-semibold whitespace-nowrap"
                         title="View the file"
                       >
                         👁 View
-                      </a>
+                      </button>
                     </div>
                   </td>
 
@@ -259,6 +270,64 @@ export default function DocumentList() {
           </tbody>
         </table>
       </div>
+
+      {/* PREVIEW MODAL */}
+      {previewDoc && (
+        <div
+          className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4"
+          onClick={() => setPreviewDoc(null)}
+        >
+          <div
+            className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between gap-4 px-4 py-3 border-b">
+              <h2 className="text-base font-semibold text-black truncate">
+                📎 {previewDoc.fileName}
+              </h2>
+
+              <div className="flex items-center gap-4 shrink-0">
+                <a
+                  href={getFileUrl(previewDoc)}
+                  download={previewDoc.fileName}
+                  className="text-sm text-[#0B2A4A] hover:underline font-medium"
+                >
+                  ⬇ Download
+                </a>
+
+                <button
+                  onClick={() => setPreviewDoc(null)}
+                  className="text-black text-xl leading-none"
+                  aria-label="Close"
+                >
+                  &times;
+                </button>
+              </div>
+            </div>
+
+            <div className="p-4 overflow-auto flex-1 flex items-center justify-center bg-gray-50">
+              {isImageFile(previewDoc.fileName) ? (
+                <img
+                  src={getFileUrl(previewDoc)}
+                  alt={previewDoc.fileName}
+                  className="max-w-full max-h-[75vh] object-contain rounded-md"
+                />
+              ) : isPdfFile(previewDoc.fileName) ? (
+                <iframe
+                  src={getFileUrl(previewDoc)}
+                  title={previewDoc.fileName}
+                  className="w-full h-[75vh] rounded-md border-0"
+                />
+              ) : (
+                <p className="text-base text-black text-center py-8">
+                  Preview is not available for this file type.
+                  Use the Download link above to open it.
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
