@@ -144,10 +144,6 @@ export default function ApplicationList() {
           <h1 className="text-3xl font-bold text-black">
             Applications
           </h1>
-
-          <p className="text-base text-black mt-1">
-            Full list of all submitted applications.
-          </p>
         </div>
 
         <Link
