@@ -64,9 +64,7 @@ export default function ConstituentsList() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-black">Constituents</h1>
-          <p className="text-base text-black mt-1">
-            Full list of registered constituents.
-          </p>
+      
         </div>
 
         <Link

@@ -71,10 +71,6 @@ export default function DocumentList() {
           <h1 className="text-3xl font-bold text-black">
             Documents for Approval
           </h1>
-
-          <p className="text-base text-black mt-1">
-            Letters, documents and reports shared for approval.
-          </p>
         </div>
 
         <Link

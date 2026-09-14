@@ -58,10 +58,6 @@ export default function CategoriesList() {
           <h1 className="text-3xl font-bold text-black">
             Request Categories
           </h1>
-
-          <p className="text-base text-black mt-1">
-            Full list of registered categories.
-          </p>
         </div>
 
         <Link

@@ -58,9 +58,6 @@ export default function BudgetList() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-black">Budgets</h1>
-          <p className="text-sm text-black mt-1">
-            Management of budgets allocated for each category and fiscal year.
-          </p>
         </div>
 
         <Link
