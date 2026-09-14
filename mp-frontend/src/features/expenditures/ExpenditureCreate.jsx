@@ -117,9 +117,7 @@ export default function ExpenditureCreate() {
 
           {/* Request */}
           <div>
-            <label className="block text-xs font-medium text-black mb-1">
-              Approved Request
-            </label>
+          
             <select
               required
               className="w-full border rounded-md px-3 py-2 text-sm text-black"
@@ -142,9 +140,7 @@ export default function ExpenditureCreate() {
 
           {/* Budget */}
           <div>
-            <label className="block text-xs font-medium text-black mb-1">
-              Related Budget (by Category/Fiscal Year)
-            </label>
+        
             <select
               required
               disabled={!selectedRequest}

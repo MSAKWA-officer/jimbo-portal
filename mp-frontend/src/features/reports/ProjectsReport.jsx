@@ -64,7 +64,6 @@ export default function ProjectsReport() {
         <div>
           <Link to="/reports" className="text-xs text-black hover:underline">&larr; Back to Reports</Link>
           <h1 className="text-2xl font-bold text-black mt-1">Projects Report</h1>
-          <p className="text-sm text-black mt-1">Projects by status, category, and their activities.</p>
         </div>
         <button
           onClick={() => window.print()}

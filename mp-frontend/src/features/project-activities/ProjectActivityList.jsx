@@ -90,9 +90,6 @@ export default function ProjectActivityList() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-3xl font-bold text-black">Project Activities</h1>
-          <p className="text-base text-black mt-1">
-            Records of activities/events taking place within each project.
-          </p>
         </div>
 
         <Link

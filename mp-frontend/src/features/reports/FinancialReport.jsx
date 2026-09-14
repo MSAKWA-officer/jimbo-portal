@@ -68,7 +68,6 @@ export default function FinancialReport() {
         <div>
           <Link to="/reports" className="text-xs text-black hover:underline">&larr; Back to Reports</Link>
           <h1 className="text-2xl font-bold text-black mt-1">Financial Report</h1>
-          <p className="text-sm text-black mt-1">Budget, expenditures, and payments by fiscal year.</p>
         </div>
         <button
           onClick={() => window.print()}

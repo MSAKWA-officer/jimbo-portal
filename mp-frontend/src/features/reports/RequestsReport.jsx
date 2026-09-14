@@ -75,7 +75,6 @@ export default function RequestsReport() {
         <div>
           <Link to="/reports" className="text-xs text-black hover:underline">&larr; Back to Reports</Link>
           <h1 className="text-2xl font-bold text-black mt-1">Requests Report</h1>
-          <p className="text-sm text-black mt-1">Summary of requests by status, priority, category, and time.</p>
         </div>
         <button
           onClick={() => window.print()}
