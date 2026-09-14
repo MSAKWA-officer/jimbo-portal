@@ -45,17 +45,14 @@ export default function Sidebar() {
 
   return (
     <aside className="fixed left-0 top-0 bottom-0 w-64 bg-gradient-to-b from-[#0B2A4A] via-[#0d3157] to-[#0a2340] text-white flex flex-col shadow-lg z-50">
-
-      {/* Logo */}
-      <div className="px-6 py-6 border-b border-blue-900/70">
-        <h1 className="text-xl font-bold">
-         JIMBO PORTAL
-        </h1>
-
-        <p className="text-xs text-blue-200 mt-1">
-          Management System
-        </p>
-      </div>
+{/* Logo */}
+<div className="px-6 py-6 border-b border-blue-900/70 flex items-center gap-3">
+  <img src="/logo.jpeg" alt="Jimbo Portal Logo" className="h-10 w-10 object-contain" />
+  <div>
+    <h1 className="text-xl font-bold">JIMBO PORTAL</h1>
+    <p className="text-xs text-blue-200 mt-1">Management System</p>
+  </div>
+</div>
 
       {/* Menu */}
       <nav className="flex-1 py-4 overflow-y-auto">
