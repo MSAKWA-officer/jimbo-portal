@@ -160,53 +160,79 @@ export default function NotificationList() {
       </div>
 
       {/* LIST */}
-      <div className="border rounded-xl overflow-hidden divide-y">
+      <div className="border rounded-xl overflow-x-auto">
         {loading ? (
           <div className="px-4 py-6 text-black text-sm">Loading...</div>
         ) : list.length === 0 ? (
           <div className="px-4 py-6 text-black text-sm">No notifications found.</div>
         ) : (
-          list.map((n) => (
-            <div
-              key={n.id}
-              className={`flex items-start gap-3 px-4 py-3 cursor-pointer hover:bg-gray-50 ${
-                !n.isRead ? 'bg-blue-50/50' : ''
-              }`}
-              onClick={() => handleOpen(n)}
-            >
-              <span className="text-lg mt-0.5">{typeIcons[n.type] || 'ℹ️'}</span>
+          <table className="w-full text-sm text-left border-collapse">
+            <thead>
+              <tr className="bg-gray-50 border-b">
+                <th className="px-4 py-2 font-semibold text-black whitespace-nowrap">Notification Type</th>
+                <th className="px-4 py-2 font-semibold text-black whitespace-nowrap">Title</th>
+                <th className="px-4 py-2 font-semibold text-black">Message</th>
+                <th className="px-4 py-2 font-semibold text-black whitespace-nowrap">Link</th>
+                <th className="px-4 py-2 font-semibold text-black whitespace-nowrap"></th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {list.map((n) => (
+                <tr
+                  key={n.id}
+                  className={`cursor-pointer hover:bg-gray-50 ${!n.isRead ? 'bg-blue-50/50' : ''}`}
+                  onClick={() => handleOpen(n)}
+                >
+                  <td className="px-4 py-3 align-top whitespace-nowrap">
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="text-base">{typeIcons[n.type] || 'ℹ️'}</span>
+                      <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${typeStyles[n.type] || 'bg-gray-100 text-black'}`}>
+                        {typeLabels[n.type] || n.type}
+                      </span>
+                    </span>
+                  </td>
 
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <p className={`text-sm text-black ${!n.isRead ? 'font-semibold' : ''}`}>
-                    {n.title}
-                  </p>
-                  <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${typeStyles[n.type] || 'bg-gray-100 text-black'}`}>
-                    {typeLabels[n.type] || n.type}
-                  </span>
-                  {!n.isRead && (
-                    <span className="w-2 h-2 rounded-full bg-[#0B2A4A]" title="Unread" />
-                  )}
-                </div>
-                <p className="text-sm text-black truncate mt-0.5">{n.message}</p>
-                <p className="text-xs text-black mt-1">
-                  {formatDateTime(n.createdAt)}
-                  {n.createdBy?.fullName ? ` • from ${n.createdBy.fullName}` : ''}
-                </p>
-              </div>
+                  <td className="px-4 py-3 align-top">
+                    <div className="flex items-center gap-2">
+                      <span className={`text-black ${!n.isRead ? 'font-semibold' : ''}`}>
+                        {n.title}
+                      </span>
+                      {!n.isRead && (
+                        <span className="w-2 h-2 rounded-full bg-[#0B2A4A] shrink-0" title="Unread" />
+                      )}
+                    </div>
+                    <p className="text-xs text-black mt-1">
+                      {formatDateTime(n.createdAt)}
+                      {n.createdBy?.fullName ? ` • from ${n.createdBy.fullName}` : ''}
+                    </p>
+                  </td>
 
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleDelete(n.id);
-                }}
-                className="text-xs text-red-500 hover:text-red-700 font-medium px-2 py-1"
-                title="Delete"
-              >
-                Delete
-              </button>
-            </div>
-          ))
+                  <td className="px-4 py-3 align-top text-black max-w-xs truncate">{n.message}</td>
+
+                  <td className="px-4 py-3 align-top whitespace-nowrap">
+                    {n.link ? (
+                      <span className="text-[#0B2A4A] underline text-sm">{n.link}</span>
+                    ) : (
+                      <span className="text-black text-sm">—</span>
+                    )}
+                  </td>
+
+                  <td className="px-4 py-3 align-top whitespace-nowrap">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete(n.id);
+                      }}
+                      className="text-xs text-red-500 hover:text-red-700 font-medium px-2 py-1"
+                      title="Delete"
+                    >
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         )}
       </div>
     </div>
