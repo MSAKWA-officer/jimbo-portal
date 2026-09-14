@@ -14,7 +14,7 @@
   100% = 1rem = 16px (hii ndiyo thamani ya sasa - "size 16")
 */
 html {
-  font-size: 125%;
+  font-size: 100%;
 }
 
 * {

@@ -61,55 +61,55 @@ export default function Sidebar() {
       <nav className="flex-1 py-4 overflow-y-auto">
 
         <NavLink to="/" end className={linkClass}>
-          <span>🏠</span>
+          <span></span>
           <span>Dashboard</span>
         </NavLink>
 
         {canSeeConstituents && (
           <NavLink to="/constituents" className={linkClass}>
-            <span>👥</span>
+            <span></span>
             <span>Constituents</span>
           </NavLink>
         )}
 
         {canSeeCategories && (
           <NavLink to="/categories" className={linkClass}>
-            <span>🗂️</span>
+            <span></span>
             <span>Categories</span>
           </NavLink>
         )}
 
         {canSeeRequests && (
           <NavLink to="/applications" className={linkClass}>
-            <span>📝</span>
+            <span></span>
             <span>Applications</span>
           </NavLink>
         )}
 
         {canSeeDocuments && (
           <NavLink to="/documents" className={linkClass}>
-            <span>📁</span>
+            <span></span>
             <span>Documents</span>
           </NavLink>
         )}
 
         {canSeeEvents && (
           <NavLink to="/events" className={linkClass}>
-            <span>📅</span>
+            <span></span>
             <span>Events</span>
           </NavLink>
         )}
 
         {canSeeProjects && (
           <NavLink to="/projects" className={linkClass}>
-            <span>🏗️</span>
+            <span></span>
             <span>Projects</span>
           </NavLink>
         )}
 
         {canSeeProjects && (
           <NavLink to="/project-activities" className={linkClass}>
-            <span>📌</span>
+            <span></span>
             <span>Project Activities</span>
           </NavLink>
         )}
@@ -119,29 +119,29 @@ export default function Sidebar() {
             <p className={sectionLabelClass}>Fedha</p>
 
             <NavLink to="/budgets" className={linkClass}>
-              <span>💰</span>
+              <span></span>
               <span>Budgets</span>
             </NavLink>
 
             <NavLink to="/expenditures" className={linkClass}>
-              <span>🧾</span>
-              <span>Usage</span>
+              <span></span>
+              <span>Expenditures</span>
             </NavLink>
 
             <NavLink to="/payments" className={linkClass}>
-              <span>💸</span>
+              <span></span>
               <span>Payments</span>
             </NavLink>
           </>
         )}
 
         <NavLink to="/reports" className={linkClass}>
-          <span>📊</span>
+          <span></span>
           <span>Reports</span>
         </NavLink>
 
         <NavLink to="/notifications" className={linkClass}>
-          <span>🔔</span>
+          <span></span>
           <span className="flex-1">Notifications</span>
           {unreadCount > 0 && (
             <span className="bg-red-500 text-white text-[11px] font-bold rounded-full min-w-[20px] h-5 flex items-center justify-center px-1">
@@ -155,12 +155,12 @@ export default function Sidebar() {
             <p className={sectionLabelClass}>Usimamizi</p>
 
             <NavLink to="/users" className={linkClass}>
-              <span>🧑‍💼</span>
+              <span></span>
               <span>Users</span>
             </NavLink>
 
             <NavLink to="/audit-logs" className={linkClass}>
-              <span>🛡️</span>
+              <span></span>
               <span>Audit Logs</span>
             </NavLink>
           </>
