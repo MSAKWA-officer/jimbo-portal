@@ -87,6 +87,10 @@ import FinancialReport from './features/reports/FinancialReport.jsx';
 import ProjectsReport from './features/reports/ProjectsReport.jsx';
 import ConstituentsReport from './features/reports/ConstituentsReport.jsx';
 
+//
+import About from './pages/About.jsx';
+import Contacts from './pages/Contacts.jsx';
+
 
 
 // Wrapper inayounganisha ProtectedRoute + AdminLayout kwa page zote za ndani
@@ -104,6 +108,8 @@ export default function App() {
       {/* Public routes */}
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/about" element={<About />} />
+      <Route path="/contacts" element={<Contacts />} />
 
       {/* Dashboard */}
       <Route path="/" element={<Protected><Dashboard /></Protected>} />
