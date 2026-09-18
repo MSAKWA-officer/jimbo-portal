@@ -95,7 +95,7 @@ export default function UserCreate() {
             <option value="secretary">Secretary</option>
             <option value="officer">Officer</option>
             <option value="admin">Admin</option>
-            <option value="viewer">Viewer</option>
+            <option value="citizen">Citizen</option>
           </select>
         </div>
 

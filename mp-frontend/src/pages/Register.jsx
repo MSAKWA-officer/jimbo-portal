@@ -3,8 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 
 // This page is for PUBLIC REGISTRATION (no login required) - for
-// CITIZENS who want to track their requests and for external VIEWERS only.
-// All accounts registered here are automatically assigned the role: 'viewer'
+// CITIZENS who want to track their requests. All accounts registered here
+// are automatically assigned the role: 'citizen'
 // (enforced on the backend - see authController.js).
 //
 // Internal office staff (Staff, Secretary, Officers) do NOT register here -
@@ -91,9 +91,10 @@ export default function Register() {
         </form>
 
         <p className="text-xs text-gray-400 mt-4 text-center">
-          This account will have viewer-only permissions. If you are an
-          office staff member (Staff/Secretary/Officer), your account will
-          be created by the system Administrator.
+          This account will let you register your constituent profile and
+          submit your own requests. If you are an office staff member
+          (Staff/Secretary/Officer), your account will be created by the
+          system Administrator.
         </p>
 
         <p className="text-sm text-gray-500 mt-4 text-center">

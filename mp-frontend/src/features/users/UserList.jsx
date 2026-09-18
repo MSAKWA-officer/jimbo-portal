@@ -8,7 +8,7 @@ const roleStyles = {
   staff: 'bg-blue-100 text-blue-700',
   secretary: 'bg-teal-100 text-teal-700',
   officer: 'bg-indigo-100 text-indigo-700',
-  viewer: 'bg-gray-100 text-black',
+  citizen: 'bg-gray-100 text-black',
 };
 
 const roleLabels = {
@@ -16,7 +16,7 @@ const roleLabels = {
   staff: 'Staff',
   secretary: 'Secretary',
   officer: 'Officer',
-  viewer: 'Viewer',
+  citizen: 'Citizen',
 };
 
 export default function UserList() {
@@ -130,7 +130,7 @@ export default function UserList() {
           <option value="staff">Staff</option>
           <option value="secretary">Secretary</option>
           <option value="officer">Officer</option>
-          <option value="viewer">Viewer</option>
+          <option value="citizen">Citizen</option>
         </select>
 
         <select

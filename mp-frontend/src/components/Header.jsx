@@ -6,7 +6,7 @@ import api from "../api/axios";
 const roleLabels = {
   admin: "Admin",
   staff: "Staff",
-  viewer: "Viewer",
+  citizen: "Citizen",
 };
 
 const pageLabels = [
@@ -63,6 +63,9 @@ const Header = () => {
       <header className="sticky top-0 z-40 h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6">
 
         <div>
+          <h2 className="text-xl font-bold text-gray-800">
+            {pageLabel}
+          </h2>
         </div>
 
         <div className="flex items-center gap-4">
