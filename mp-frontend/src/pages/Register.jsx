@@ -2,13 +2,13 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 
-// Ukurasa huu ni wa USAJILI WA HADHARA (bila kuhitaji login) - kwa
-// WANANCHI wanaotaka kufuatilia maombi yao na kwa VIEWERS wa nje pekee.
-// Akaunti zote zinazosajiliwa hapa huwa na role: 'viewer' moja kwa moja
-// (imefungwa upande wa backend - angalia authController.js).
+// This page is for PUBLIC REGISTRATION (no login required) - for
+// CITIZENS who want to track their requests and for external VIEWERS only.
+// All accounts registered here are automatically assigned the role: 'viewer'
+// (enforced on the backend - see authController.js).
 //
-// Watumiaji wa ndani wa ofisi (Staff, Secretary, Maafisa) HAWAJISAJILI hapa -
-// huongezwa na admin pekee kupitia ukurasa wa "Watumiaji" (UserCreate.jsx).
+// Internal office staff (Staff, Secretary, Officers) do NOT register here -
+// they are added by an admin only, through the "Users" page (UserCreate.jsx).
 export default function Register() {
   const { register } = useAuth();
   const navigate = useNavigate();
@@ -24,7 +24,7 @@ export default function Register() {
       await register(form);
       navigate('/');
     } catch (err) {
-      setError(err.response?.data?.message || 'Imeshindwa kujisajili.');
+      setError(err.response?.data?.message || 'Registration failed.');
     } finally {
       setLoading(false);
     }
@@ -33,9 +33,9 @@ export default function Register() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
       <div className="w-full max-w-sm bg-white p-8 rounded-xl shadow-sm border">
-        <h1 className="text-xl font-bold text-brand-700 mb-1">Jisajili</h1>
+        <h1 className="text-xl font-bold text-brand-700 mb-1">Register</h1>
         <p className="text-sm text-gray-500 mb-6">
-          Kwa wananchi wanaotaka kufuatilia maombi yao mtandaoni.
+          For citizens who want to track their requests online.
         </p>
 
         {error && (
@@ -44,7 +44,7 @@ export default function Register() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Jina kamili</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
             <input
               required
               className="w-full border rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 outline-none"
@@ -53,7 +53,7 @@ export default function Register() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Barua pepe</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
             <input
               type="email"
               required
@@ -63,7 +63,7 @@ export default function Register() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Simu</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
             <input
               className="w-full border rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 outline-none"
               value={form.phone}
@@ -86,20 +86,20 @@ export default function Register() {
             disabled={loading}
             className="w-full bg-brand-600 hover:bg-brand-700 text-white font-medium py-2 rounded-md text-sm disabled:opacity-60"
           >
-            {loading ? 'Inasajili...' : 'Jisajili'}
+            {loading ? 'Registering...' : 'Register'}
           </button>
         </form>
 
         <p className="text-xs text-gray-400 mt-4 text-center">
-          Akaunti hii itakuwa na ruhusa za kutazama (viewer) tu. Kama wewe ni
-          mtumishi wa ofisi (Staff/Secretary/Afisa), akaunti yako itaongezwa
-          na Msimamizi (Admin) wa mfumo.
+          This account will have viewer-only permissions. If you are an
+          office staff member (Staff/Secretary/Officer), your account will
+          be created by the system Administrator.
         </p>
 
         <p className="text-sm text-gray-500 mt-4 text-center">
-          Una akaunti tayari?{' '}
+          Already have an account?{' '}
           <Link to="/login" className="text-brand-600 font-medium">
-            Ingia
+            Login
           </Link>
         </p>
       </div>

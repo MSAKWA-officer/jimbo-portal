@@ -24,7 +24,7 @@ export default function PublicHeader() {
 
           <div className="flex-1 text-center px-4">
             <h1 className="text-white text-sm md:text-base font-bold tracking-wide leading-tight">
-              THE UNITED REPUBLIC OF TANZANIA
+              THE CITY COUNCIL OF MBEYA
               <br />
               OFFICE OF THE MEMBER OF PARLIAMENT
               <br />
