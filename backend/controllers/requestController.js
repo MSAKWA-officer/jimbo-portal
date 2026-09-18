@@ -43,6 +43,34 @@ const includeRelations = [
 ];
 
 // ==========================================
+// GET MINE (CITIZEN's own requests)
+// GET /api/requests/mine
+// ==========================================
+exports.getMine = async (req, res) => {
+  try {
+    const myProfile = await Constituent.findOne({ where: { userId: req.user.id } });
+
+    if (!myProfile) {
+      return res.json({ total: 0, data: [] });
+    }
+
+    const requests = await Request.findAll({
+      where: { constituentId: myProfile.id },
+      include: includeRelations,
+      order: [['createdAt', 'DESC']],
+    });
+
+    return res.json({ total: requests.length, data: requests });
+  } catch (error) {
+    console.error('GET MINE REQUESTS ERROR:', error);
+    return res.status(500).json({
+      message: 'Failed to retrieve your requests.',
+      error: error.message,
+    });
+  }
+};
+
+// ==========================================
 // GET ALL
 // GET /api/requests
 // ==========================================
@@ -162,12 +190,28 @@ exports.getOne = async (req, res) => {
 exports.create = async (req, res) => {
   try {
     const {
-      constituentId,
       categoryId,
       title,
       description,
       priority,
     } = req.body;
+
+    let { constituentId } = req.body;
+
+    // SECURITY: a citizen can only submit a request under THEIR OWN
+    // constituent profile - constituentId is never trusted from a citizen's
+    // request body, it is always looked up from their own account.
+    if (req.user.role === 'citizen') {
+      const myProfile = await Constituent.findOne({ where: { userId: req.user.id } });
+
+      if (!myProfile) {
+        return res.status(400).json({
+          message: 'Please complete your constituent profile before submitting a request.',
+        });
+      }
+
+      constituentId = myProfile.id;
+    }
 
     if (
       !constituentId ||

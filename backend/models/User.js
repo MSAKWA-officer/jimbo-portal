@@ -28,8 +28,9 @@ const User = sequelize.define('User', {
     //  - staff: mfanyakazi wa jumla wa ofisi
     //  - secretary: katibu - anayeshughulikia mawasiliano/hati
     //  - officer: afisa - anayeshughulikia masuala ya kiufundi/miradi
-    //  - viewer: mtazamaji tu (wananchi wanaojisajili hadharani)
-    type: DataTypes.ENUM('admin', 'staff', 'secretary', 'officer', 'viewer'),
+    //  - citizen: mwananchi anayejisajili hadharani, anaweza kujiongeza
+    //    kwenye constituents na kutuma maombi (requests) yake mwenyewe
+    type: DataTypes.ENUM('admin', 'staff', 'secretary', 'officer', 'citizen'),
     allowNull: false,
     defaultValue: 'staff',
   },

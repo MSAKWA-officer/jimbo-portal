@@ -16,6 +16,10 @@ const Notification = require('./Notification');
 
 // ------------------- MAHUSIANO (ASSOCIATIONS) -------------------
 
+// User (1) --- (1) Constituent  (akaunti ya 'citizen' na profile yake ya mwananchi)
+User.hasOne(Constituent, { foreignKey: 'userId', as: 'constituentProfile' });
+Constituent.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+
 // Constituent (1) --- (N) Request
 Constituent.hasMany(Request, { foreignKey: 'constituentId', as: 'requests' });
 Request.belongsTo(Constituent, { foreignKey: 'constituentId', as: 'constituent' });

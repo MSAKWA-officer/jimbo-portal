@@ -8,19 +8,23 @@ const uploadLetter = require('../middleware/uploadLetter');
 
 router.use(protect);
 
+// GET /api/requests/mine (CITIZEN - their own submitted requests)
+router.get('/mine', authorize('citizen'), ctrl.getMine);
+
 // GET /api/requests/stats/summary
-router.get('/stats/summary', ctrl.getStats);
+router.get('/stats/summary', authorize('admin', 'staff', 'secretary', 'officer'), ctrl.getStats);
 
 // GET /api/requests
-router.get('/', ctrl.getAll);
+router.get('/', authorize('admin', 'staff', 'secretary', 'officer'), ctrl.getAll);
 
 // GET /api/requests/:id
 router.get('/:id', ctrl.getOne);
 
-// POST /api/requests (kupokea ombi jipya kwa niaba ya mwananchi - kazi ya mapokezi)
+// POST /api/requests (staff receiving a request on behalf of a citizen, OR
+// a citizen submitting their own request directly)
 router.post(
   '/',
-  authorize('admin', 'staff', 'secretary'),
+  authorize('admin', 'staff', 'secretary', 'citizen'),
   uploadLetter.single('identificationLetter'),
   ctrl.create
 );

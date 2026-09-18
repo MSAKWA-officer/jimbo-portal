@@ -53,6 +53,80 @@ exports.create = async (req, res) => {
   }
 };
 
+// POST /api/constituents/me
+// A logged-in CITIZEN adds their own constituent profile (self-service).
+// userId is always taken from the token (req.user.id) - never from the
+// request body - so a citizen can never create a profile for someone else.
+exports.registerSelf = async (req, res) => {
+  try {
+    const existing = await Constituent.findOne({ where: { userId: req.user.id } });
+    if (existing) {
+      return res.status(409).json({ message: 'You already have a constituent profile.', data: existing });
+    }
+
+    const { fullName, gender, nationalId, phone, email, region, district, ward, village, dateOfBirth } = req.body;
+
+    if (!fullName) {
+      return res.status(400).json({ message: 'Please fill in your full name.' });
+    }
+
+    const constituent = await Constituent.create({
+      userId: req.user.id,
+      fullName,
+      gender,
+      nationalId,
+      phone,
+      email,
+      region,
+      district,
+      ward,
+      village,
+      dateOfBirth,
+    });
+
+    res.status(201).json(constituent);
+  } catch (error) {
+    res.status(400).json({ message: 'Failed to create your constituent profile.', error: error.message });
+  }
+};
+
+// GET /api/constituents/me
+// A logged-in CITIZEN fetches their own constituent profile + their requests.
+exports.getMyProfile = async (req, res) => {
+  try {
+    const constituent = await Constituent.findOne({
+      where: { userId: req.user.id },
+      include: [{ association: 'requests' }],
+    });
+
+    if (!constituent) {
+      return res.status(404).json({ message: 'You have not registered a constituent profile yet.' });
+    }
+
+    res.json(constituent);
+  } catch (error) {
+    res.status(500).json({ message: 'An error occurred.', error: error.message });
+  }
+};
+
+// PUT /api/constituents/me
+// A logged-in CITIZEN updates their own constituent profile.
+exports.updateMyProfile = async (req, res) => {
+  try {
+    const constituent = await Constituent.findOne({ where: { userId: req.user.id } });
+    if (!constituent) {
+      return res.status(404).json({ message: 'You have not registered a constituent profile yet.' });
+    }
+
+    const { fullName, gender, nationalId, phone, email, region, district, ward, village, dateOfBirth } = req.body;
+    await constituent.update({ fullName, gender, nationalId, phone, email, region, district, ward, village, dateOfBirth });
+
+    res.json(constituent);
+  } catch (error) {
+    res.status(400).json({ message: 'Failed to update your profile.', error: error.message });
+  }
+};
+
 // PUT /api/constituents/:id
 exports.update = async (req, res) => {
   try {

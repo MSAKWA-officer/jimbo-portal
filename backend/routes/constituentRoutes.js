@@ -5,8 +5,13 @@ const { protect, authorize } = require('../middleware/auth');
 
 router.use(protect); // routes zote hapa chini zinahitaji login
 
-router.get('/', ctrl.getAll);
-router.get('/:id', ctrl.getOne);
+// SELF-SERVICE (CITIZEN) - must come before "/:id" so "me" is not read as an id
+router.post('/me', authorize('citizen'), ctrl.registerSelf);
+router.get('/me', authorize('citizen'), ctrl.getMyProfile);
+router.put('/me', authorize('citizen'), ctrl.updateMyProfile);
+
+router.get('/', authorize('admin', 'staff', 'secretary', 'officer'), ctrl.getAll);
+router.get('/:id', authorize('admin', 'staff', 'secretary', 'officer'), ctrl.getOne);
 
 // Kuandikisha/kuhariri wananchi ni kazi ya ofisi (mapokezi) - admin, staff, secretary
 router.post('/', authorize('admin', 'staff', 'secretary'), ctrl.create);

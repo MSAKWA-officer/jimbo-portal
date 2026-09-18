@@ -11,11 +11,11 @@ const generateToken = (user) => {
 };
 
 // @route POST /api/auth/register
-// PUBLIC registration (no login required) - for CONSTITUENTS and VIEWERS only.
+// PUBLIC registration (no login required) - for CITIZENS only.
 // If the request comes from a logged-in admin (req.user is set by
 // optionalAuth in authRoutes.js), only that admin is allowed to choose a
 // role (e.g. Staff/Secretary/Officer - all currently stored as the 'staff'
-// role for now) - otherwise the role is set to 'viewer' automatically,
+// role for now) - otherwise the role is set to 'citizen' automatically,
 // regardless of what the visitor submitted in their request.
 exports.register = async (req, res) => {
   try {
@@ -29,13 +29,13 @@ exports.register = async (req, res) => {
 
     let role;
     if (isAdminCreating) {
-      const validRoles = ['admin', 'staff', 'secretary', 'officer', 'viewer'];
+      const validRoles = ['admin', 'staff', 'secretary', 'officer', 'citizen'];
       role = validRoles.includes(req.body.role) ? req.body.role : 'staff';
     } else {
       // Security: the role of a non-logged-in visitor can NEVER come from
-      // their request - it is always 'viewer', even if they tried to submit
+      // their request - it is always 'citizen', even if they tried to submit
       // something else.
-      role = 'viewer';
+      role = 'citizen';
     }
 
     const existing = await User.findOne({ where: { email } });

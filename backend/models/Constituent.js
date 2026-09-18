@@ -8,6 +8,15 @@ const Constituent = sequelize.define('Constituent', {
     primaryKey: true,
     autoIncrement: true,
   },
+  // Endapo profile hii ni ya mwananchi mwenye akaunti ya 'citizen' aliyejiongeza
+  // mwenyewe, hii inaunganisha na akaunti yake (Users). Ni null kwa constituents
+  // walioandikishwa na ofisi (staff/secretary) ambao hawana akaunti ya login.
+  userId: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    unique: true,
+    field: 'user_id',
+  },
   fullName: {
     type: DataTypes.STRING(150),
     allowNull: false,
