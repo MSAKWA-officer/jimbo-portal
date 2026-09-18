@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext.jsx';
 import api from '../../api/axios';
 
 const statusLabels = {
@@ -18,53 +19,33 @@ const statusColors = {
   completed: 'bg-gray-200 text-black',
 };
 
-const IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png'];
-
-// Build a viewable URL for the uploaded letter from the path stored by
-// multer on the backend (which may be an absolute filesystem path).
-// NOTE: the backend serves /uploads from the server root (see server.js),
-// while api.defaults.baseURL usually includes an "/api" suffix
-// (e.g. https://jimbo-backend-sz7p.onrender.com/api). So we can't just
-// prepend the baseURL directly — we need the origin only.
-const getLetterUrl = (identificationLetterPath) => {
-  if (!identificationLetterPath) return null;
-
-  const fileName = identificationLetterPath.split(/[\\/]/).pop();
-  const rawBase = api.defaults.baseURL || '';
-
-  let origin;
-  try {
-    origin = new URL(rawBase).origin;
-  } catch {
-    // Fallback: strip a trailing "/api" (with or without slash) manually.
-    origin = rawBase.replace(/\/api\/?$/, '').replace(/\/$/, '');
-  }
-
-  return `${origin}/uploads/letters/${fileName}`;
-};
-
 export default function ApplicationList() {
+  const { user } = useAuth();
+  const isCitizen = user?.role === 'citizen';
+
   const [list, setList] = useState([]);
   const [statusFilter, setStatusFilter] = useState('');
   const [search, setSearch] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
-  const [deletingId, setDeletingId] = useState(null);
-  const [viewer, setViewer] = useState(null); // { url, name, isImage }
 
   const load = async () => {
     setLoading(true);
     setError('');
 
     try {
-      const { data } = await api.get('/requests', {
-        params: {
-          status: statusFilter || undefined,
-          search: search || undefined,
-        },
-      });
-
-      setList(data.data);
+      if (isCitizen) {
+        const { data } = await api.get('/requests/mine');
+        setList(data.data);
+      } else {
+        const { data } = await api.get('/requests', {
+          params: {
+            status: statusFilter || undefined,
+            search: search || undefined,
+          },
+        });
+        setList(data.data);
+      }
     } catch (err) {
       setError(
         err.response?.data?.message ||
@@ -78,12 +59,16 @@ export default function ApplicationList() {
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [statusFilter]);
+  }, [isCitizen ? null : statusFilter]);
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
-    load();
+    if (!isCitizen) load();
   };
+
+  const displayList = isCitizen && statusFilter
+    ? list.filter((r) => r.status === statusFilter)
+    : list;
 
   const changeStatus = async (id, status) => {
     try {
@@ -97,44 +82,6 @@ export default function ApplicationList() {
     }
   };
 
-  const openLetter = (r) => {
-    const url = getLetterUrl(r.identificationLetterPath);
-    if (!url) return;
-
-    const ext = (r.identificationLetterName || url).split('.').pop().toLowerCase();
-
-    setViewer({
-      url,
-      name: r.identificationLetterName || 'Identification letter',
-      isImage: IMAGE_EXTENSIONS.includes(ext),
-    });
-  };
-
-  const closeViewer = () => setViewer(null);
-
-  const handleDelete = async (r) => {
-    const confirmed = window.confirm(
-      `Are you sure you want to delete "${r.title}" (${r.trackingNumber})? This action cannot be undone.`
-    );
-
-    if (!confirmed) return;
-
-    setDeletingId(r.id);
-    setError('');
-
-    try {
-      await api.delete(`/requests/${r.id}`);
-      load();
-    } catch (err) {
-      setError(
-        err.response?.data?.message ||
-          'Failed to delete the application.'
-      );
-    } finally {
-      setDeletingId(null);
-    }
-  };
-
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 bg-white border rounded-xl shadow-sm">
 
@@ -144,6 +91,12 @@ export default function ApplicationList() {
           <h1 className="text-3xl font-bold text-black">
             Applications
           </h1>
+
+          <p className="text-base text-black mt-1">
+            {isCitizen
+              ? 'Your own submitted applications.'
+              : 'Full list of all submitted applications.'}
+          </p>
         </div>
 
         <Link
@@ -161,24 +114,26 @@ export default function ApplicationList() {
       )}
 
       {/* SEARCH */}
-      <form
-        onSubmit={handleSearchSubmit}
-        className="flex gap-2 mb-4"
-      >
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search by title or tracking number..."
-          className="flex-1 border rounded-md px-3 py-2 text-base text-black"
-        />
-
-        <button
-          type="submit"
-          className="bg-gray-100 hover:bg-gray-200 text-black text-base font-medium px-4 py-2 rounded-md"
+      {!isCitizen && (
+        <form
+          onSubmit={handleSearchSubmit}
+          className="flex gap-2 mb-4"
         >
-          Search
-        </button>
-      </form>
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by title or tracking number..."
+            className="flex-1 border rounded-md px-3 py-2 text-base text-black"
+          />
+
+          <button
+            type="submit"
+            className="bg-gray-100 hover:bg-gray-200 text-black text-base font-medium px-4 py-2 rounded-md"
+          >
+            Search
+          </button>
+        </form>
+      )}
 
       {/* STATUS FILTER */}
       <div className="flex gap-2 mb-4 flex-wrap">
@@ -223,7 +178,7 @@ export default function ApplicationList() {
               <th className="px-4 py-3">Category</th>
               <th className="px-4 py-3">Letter</th>
               <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3">Actions</th>
+              {!isCitizen && <th className="px-4 py-3">Actions</th>}
             </tr>
           </thead>
 
@@ -231,18 +186,18 @@ export default function ApplicationList() {
 
             {loading ? (
               <tr>
-                <td className="px-4 py-4 text-black" colSpan={7}>
+                <td className="px-4 py-4 text-black" colSpan={isCitizen ? 6 : 7}>
                   Loading...
                 </td>
               </tr>
-            ) : list.length === 0 ? (
+            ) : displayList.length === 0 ? (
               <tr>
-                <td className="px-4 py-4 text-black" colSpan={7}>
+                <td className="px-4 py-4 text-black" colSpan={isCitizen ? 6 : 7}>
                   No applications yet.
                 </td>
               </tr>
             ) : (
-              list.map((r) => (
+              displayList.map((r) => (
                 <tr key={r.id}>
 
                   <td className="px-4 py-3 font-mono text-sm text-black">
@@ -263,19 +218,9 @@ export default function ApplicationList() {
 
                   <td className="px-4 py-3">
                     {r.identificationLetterName ? (
-                      <div className="flex items-center gap-2">
-                        <span className="text-green-700 text-sm font-medium">
-                          📄 Present
-                        </span>
-
-                        <button
-                          type="button"
-                          onClick={() => openLetter(r)}
-                          className="text-[#0B2A4A] hover:underline text-sm font-semibold"
-                        >
-                          View
-                        </button>
-                      </div>
+                      <span className="text-green-700 text-sm font-medium">
+                        📄 Present
+                      </span>
                     ) : (
                       <span className="text-red-600 text-sm">
                         Missing
@@ -284,40 +229,39 @@ export default function ApplicationList() {
                   </td>
 
                   <td className="px-4 py-3">
-                    <select
-                      value={r.status}
-                      onChange={(e) => changeStatus(r.id, e.target.value)}
-                      className={`text-sm font-medium px-2 py-1 rounded-md border-0 ${
-                        statusColors[r.status]
-                      }`}
-                    >
-                      {Object.entries(statusLabels).map(([key, label]) => (
-                        <option key={key} value={key}>
-                          {label}
-                        </option>
-                      ))}
-                    </select>
+                    {isCitizen ? (
+                      <span
+                        className={`text-sm font-medium px-2 py-1 rounded-md inline-block ${statusColors[r.status]}`}
+                      >
+                        {statusLabels[r.status]}
+                      </span>
+                    ) : (
+                      <select
+                        value={r.status}
+                        onChange={(e) => changeStatus(r.id, e.target.value)}
+                        className={`text-sm font-medium px-2 py-1 rounded-md border-0 ${
+                          statusColors[r.status]
+                        }`}
+                      >
+                        {Object.entries(statusLabels).map(([key, label]) => (
+                          <option key={key} value={key}>
+                            {label}
+                          </option>
+                        ))}
+                      </select>
+                    )}
                   </td>
 
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-3">
+                  {!isCitizen && (
+                    <td className="px-4 py-3">
                       <Link
                         to={`/applications/${r.id}/edit`}
                         className="text-[#0B2A4A] hover:underline text-sm font-semibold"
                       >
                         Edit
                       </Link>
-
-                      <button
-                        type="button"
-                        onClick={() => handleDelete(r)}
-                        disabled={deletingId === r.id}
-                        className="text-red-600 hover:underline text-sm font-semibold disabled:text-gray-400"
-                      >
-                        {deletingId === r.id ? 'Deleting...' : 'Delete'}
-                      </button>
-                    </div>
-                  </td>
+                    </td>
+                  )}
 
                 </tr>
               ))
@@ -328,61 +272,6 @@ export default function ApplicationList() {
         </table>
 
       </div>
-
-      {/* LETTER VIEWER MODAL */}
-      {viewer && (
-        <div
-          className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4"
-          onClick={closeViewer}
-        >
-          <div
-            className="bg-white rounded-xl shadow-lg w-full max-w-4xl h-[85vh] flex flex-col overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between px-4 py-3 border-b bg-gray-50">
-              <h2 className="text-base font-semibold text-black truncate pr-4">
-                {viewer.name}
-              </h2>
-
-              <div className="flex items-center gap-4 shrink-0">
-                <a
-                  href={viewer.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-sm text-[#0B2A4A] hover:underline"
-                >
-                  Open in new tab
-                </a>
-
-                <button
-                  type="button"
-                  onClick={closeViewer}
-                  className="text-black hover:text-gray-600 text-xl leading-none"
-                  aria-label="Close"
-                >
-                  &times;
-                </button>
-              </div>
-            </div>
-
-            <div className="flex-1 overflow-auto bg-gray-200">
-              {viewer.isImage ? (
-                <img
-                  src={viewer.url}
-                  alt={viewer.name}
-                  className="max-w-full mx-auto"
-                />
-              ) : (
-                <iframe
-                  src={viewer.url}
-                  title={viewer.name}
-                  className="w-full h-full"
-                />
-              )}
-            </div>
-          </div>
-        </div>
-      )}
 
     </div>
   );

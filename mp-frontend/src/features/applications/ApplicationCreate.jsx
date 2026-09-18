@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext.jsx';
 import api from '../../api/axios';
 
 const emptyForm = {
@@ -12,6 +13,8 @@ const emptyForm = {
 
 export default function ApplicationCreate() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isCitizen = user?.role === 'citizen';
 
   const [constituents, setConstituents] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -24,15 +27,21 @@ export default function ApplicationCreate() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    api
-      .get('/constituents', { params: { limit: 100 } })
-      .then((res) => setConstituents(res.data.data))
-      .catch(() => {});
+    // A citizen submits under their own profile automatically (the backend
+    // fills in constituentId from their account) - no need to fetch the
+    // full constituents list, which citizens aren't allowed to see anyway.
+    if (!isCitizen) {
+      api
+        .get('/constituents', { params: { limit: 100 } })
+        .then((res) => setConstituents(res.data.data))
+        .catch(() => {});
+    }
 
     api
       .get('/categories')
       .then((res) => setCategories(res.data))
       .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleLetterChange = (e) => {
@@ -83,7 +92,9 @@ export default function ApplicationCreate() {
     try {
       const formData = new FormData();
 
-      formData.append('constituentId', form.constituentId);
+      if (!isCitizen) {
+        formData.append('constituentId', form.constituentId);
+      }
       formData.append('categoryId', form.categoryId);
       formData.append('title', form.title);
       formData.append('description', form.description);
@@ -130,24 +141,26 @@ export default function ApplicationCreate() {
       <form onSubmit={handleSubmit} className="space-y-4">
 
         {/* Constituent + Category */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className={`grid grid-cols-1 ${isCitizen ? '' : 'md:grid-cols-2'} gap-4`}>
 
-          <select
-            required
-            className="border rounded-md px-3 py-2 text-base text-black"
-            value={form.constituentId}
-            onChange={(e) =>
-              setForm({ ...form, constituentId: e.target.value })
-            }
-          >
-            <option value="">-- Select Constituent --</option>
+          {!isCitizen && (
+            <select
+              required
+              className="border rounded-md px-3 py-2 text-base text-black"
+              value={form.constituentId}
+              onChange={(e) =>
+                setForm({ ...form, constituentId: e.target.value })
+              }
+            >
+              <option value="">-- Select Constituent --</option>
 
-            {constituents.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.fullName}
-              </option>
-            ))}
-          </select>
+              {constituents.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.fullName}
+                </option>
+              ))}
+            </select>
+          )}
 
           <select
             required
