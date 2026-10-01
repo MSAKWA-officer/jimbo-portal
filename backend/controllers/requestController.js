@@ -1,3 +1,5 @@
+const fs = require('fs');
+const path = require('path');
 const { Op } = require('sequelize');
 
 const {
@@ -41,34 +43,6 @@ const includeRelations = [
     attributes: ['id', 'fullName', 'email'],
   },
 ];
-
-// ==========================================
-// GET MINE (CITIZEN's own requests)
-// GET /api/requests/mine
-// ==========================================
-exports.getMine = async (req, res) => {
-  try {
-    const myProfile = await Constituent.findOne({ where: { userId: req.user.id } });
-
-    if (!myProfile) {
-      return res.json({ total: 0, data: [] });
-    }
-
-    const requests = await Request.findAll({
-      where: { constituentId: myProfile.id },
-      include: includeRelations,
-      order: [['createdAt', 'DESC']],
-    });
-
-    return res.json({ total: requests.length, data: requests });
-  } catch (error) {
-    console.error('GET MINE REQUESTS ERROR:', error);
-    return res.status(500).json({
-      message: 'Failed to retrieve your requests.',
-      error: error.message,
-    });
-  }
-};
 
 // ==========================================
 // GET ALL
@@ -143,7 +117,7 @@ exports.getAll = async (req, res) => {
 
     return res.status(500).json({
       message:
-        'Failed to retrieve the list of requests.',
+        'Imeshindwa kupata orodha ya maombi.',
       error: error.message,
     });
   }
@@ -165,7 +139,7 @@ exports.getOne = async (req, res) => {
 
     if (!request) {
       return res.status(404).json({
-        message: 'Request not found.',
+        message: 'Ombi halikuonekana.',
       });
     }
 
@@ -177,7 +151,7 @@ exports.getOne = async (req, res) => {
     );
 
     return res.status(500).json({
-      message: 'An error occurred.',
+      message: 'Hitilafu.',
       error: error.message,
     });
   }
@@ -190,28 +164,12 @@ exports.getOne = async (req, res) => {
 exports.create = async (req, res) => {
   try {
     const {
+      constituentId,
       categoryId,
       title,
       description,
       priority,
     } = req.body;
-
-    let { constituentId } = req.body;
-
-    // SECURITY: a citizen can only submit a request under THEIR OWN
-    // constituent profile - constituentId is never trusted from a citizen's
-    // request body, it is always looked up from their own account.
-    if (req.user.role === 'citizen') {
-      const myProfile = await Constituent.findOne({ where: { userId: req.user.id } });
-
-      if (!myProfile) {
-        return res.status(400).json({
-          message: 'Please complete your constituent profile before submitting a request.',
-        });
-      }
-
-      constituentId = myProfile.id;
-    }
 
     if (
       !constituentId ||
@@ -221,15 +179,15 @@ exports.create = async (req, res) => {
     ) {
       return res.status(400).json({
         message:
-          'Please fill in constituentId, categoryId, title, and description.',
+          'Jaza constituentId, categoryId, title na description.',
       });
     }
 
-    // THE IDENTIFICATION LETTER IS REQUIRED
+    // BARUA NI LAZIMA
     if (!req.file) {
       return res.status(400).json({
         message:
-          'Please attach an Identification Letter from the Local Government.',
+          'Tafadhali ambatanisha Barua ya Utambulisho kutoka Serikali za Mitaa.',
       });
     }
 
@@ -252,7 +210,7 @@ exports.create = async (req, res) => {
 
         submittedById: req.user.id,
 
-        // IDENTIFICATION LETTER
+        // BARUA YA UTAMBULISHO
         identificationLetterPath:
           req.file.path,
 
@@ -273,7 +231,7 @@ exports.create = async (req, res) => {
 
     return res.status(201).json({
       message:
-        'Request submitted successfully.',
+        'Ombi limewasilishwa kwa mafanikio.',
       data: full,
     });
   } catch (error) {
@@ -284,7 +242,7 @@ exports.create = async (req, res) => {
 
     return res.status(500).json({
       message:
-        'Failed to submit request.',
+        'Imeshindwa kuwasilisha ombi.',
       error: error.message,
     });
   }
@@ -303,7 +261,7 @@ exports.update = async (req, res) => {
 
     if (!request) {
       return res.status(404).json({
-        message: 'Request not found.',
+        message: 'Ombi halikuonekana.',
       });
     }
 
@@ -326,7 +284,7 @@ exports.update = async (req, res) => {
 
     return res.status(400).json({
       message:
-        'Failed to update request.',
+        'Imeshindwa kusasisha ombi.',
       error: error.message,
     });
   }
@@ -351,7 +309,7 @@ exports.updateStatus = async (req, res) => {
     if (!validStatuses.includes(status)) {
       return res.status(400).json({
         message:
-          'Invalid status.',
+          'Hali (status) siyo sahihi.',
       });
     }
 
@@ -362,7 +320,7 @@ exports.updateStatus = async (req, res) => {
 
     if (!request) {
       return res.status(404).json({
-        message: 'Request not found.',
+        message: 'Ombi halikuonekana.',
       });
     }
 
@@ -393,7 +351,7 @@ exports.updateStatus = async (req, res) => {
 
     return res.status(400).json({
       message:
-        'Failed to change request status.',
+        'Imeshindwa kubadili hali ya ombi.',
       error: error.message,
     });
   }
@@ -412,14 +370,14 @@ exports.remove = async (req, res) => {
 
     if (!request) {
       return res.status(404).json({
-        message: 'Request not found.',
+        message: 'Ombi halikuonekana.',
       });
     }
 
     await request.destroy();
 
     return res.json({
-      message: 'Request removed.',
+      message: 'Ombi limeondolewa.',
     });
   } catch (error) {
     console.error(
@@ -428,7 +386,7 @@ exports.remove = async (req, res) => {
     );
 
     return res.status(500).json({
-      message: 'An error occurred.',
+      message: 'Hitilafu.',
       error: error.message,
     });
   }
@@ -470,8 +428,47 @@ exports.getStats = async (req, res) => {
 
     return res.status(500).json({
       message:
-        'Failed to retrieve request statistics.',
+        'Imeshindwa kupata takwimu za maombi.',
       error: error.message,
+    });
+  }
+};
+
+// ==========================================
+// GET LETTER (view the identification letter)
+// GET /api/requests/:id/letter
+// ==========================================
+exports.getLetter = async (req, res) => {
+  try {
+    const request = await Request.findByPk(req.params.id);
+
+    if (!request || !request.identificationLetterPath) {
+      return res.status(404).json({
+        message: 'This application has no letter.',
+      });
+    }
+
+    // Serve only files inside uploads/letters, using the file name only
+    const lettersDir = path.resolve(__dirname, '..', 'uploads', 'letters');
+    const fileName = path.basename(
+      String(request.identificationLetterPath).replace(/\\/g, '/')
+    );
+    const filePath = path.join(lettersDir, fileName);
+
+    if (!filePath.startsWith(lettersDir) || !fs.existsSync(filePath)) {
+      return res.status(404).json({
+        message:
+          'The letter file was not found on the server. Please upload it again.',
+      });
+    }
+
+    res.setHeader('Content-Disposition', 'inline');
+    return res.sendFile(filePath);
+  } catch (error) {
+    console.error('GET LETTER ERROR:', error);
+
+    return res.status(500).json({
+      message: 'Failed to load the letter.',
     });
   }
 };
