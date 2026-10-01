@@ -19,6 +19,185 @@ const roleLabels = {
   citizen: 'Citizen',
 };
 
+// Generates a random 10-character password (no look-alike characters)
+const generatePassword = () => {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+  const bytes = new Uint32Array(10);
+  window.crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => chars[b % chars.length]).join('');
+};
+
+// ---------------------------------------------------------------
+// Reset password modal (admin sets a new password for another user)
+// ---------------------------------------------------------------
+function ResetPasswordModal({ user, onClose }) {
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [show, setShow] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [done, setDone] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  // Close with Esc
+  useEffect(() => {
+    const onKey = (e) => e.key === 'Escape' && onClose();
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  const handleGenerate = () => {
+    const pw = generatePassword();
+    setPassword(pw);
+    setConfirm(pw);
+    setShow(true);
+    setError('');
+  };
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(password);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setError('Could not copy. Please copy the password manually.');
+    }
+  };
+
+  const handleSubmit = async () => {
+    setError('');
+
+    if (password.length < 6) {
+      setError('The password must be at least 6 characters.');
+      return;
+    }
+    if (password !== confirm) {
+      setError('The two passwords do not match.');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await api.put(`/users/${user.id}/reset-password`, { newPassword: password });
+      setDone(true);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to reset the password.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Reset password"
+    >
+      <div
+        className="bg-white rounded-xl w-full max-w-md p-6 shadow-xl"
+        style={{ fontFamily: "'Times New Roman', Times, serif" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 className="text-xl font-bold text-black mb-1">Reset Password</h2>
+        <p className="text-base text-black mb-4">
+          {user.fullName} <span className="text-gray-600">({user.email})</span>
+        </p>
+
+        {done ? (
+          <>
+            <div className="bg-green-50 text-green-800 px-3 py-2 rounded-md mb-4 text-base">
+              Password has been reset. Share the new password with the user securely
+              and ask them to change it after logging in.
+            </div>
+
+            <div className="flex items-center gap-2 mb-5">
+              <code className="flex-1 border rounded-md px-3 py-2 bg-gray-50 text-black text-base break-all">
+                {password}
+              </code>
+              <button
+                onClick={handleCopy}
+                className="border rounded-md px-3 py-2 text-base text-[#0B2A4A] hover:bg-gray-50"
+              >
+                {copied ? 'Copied' : 'Copy'}
+              </button>
+            </div>
+
+            <div className="flex justify-end">
+              <button
+                onClick={onClose}
+                className="bg-[#0B2A4A] hover:bg-[#123B63] text-white text-base font-medium px-4 py-2 rounded-md"
+              >
+                Done
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            {error && (
+              <div className="bg-red-50 text-red-700 px-3 py-2 rounded-md mb-3 text-base">{error}</div>
+            )}
+
+            <label className="block text-base font-semibold text-black mb-1">New Password</label>
+            <div className="flex items-center gap-2 mb-3">
+              <input
+                type={show ? 'text' : 'password'}
+                className="flex-1 border rounded-md px-3 py-2 text-base text-black"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="new-password"
+                autoFocus
+              />
+              <button
+                type="button"
+                onClick={() => setShow((v) => !v)}
+                className="border rounded-md px-3 py-2 text-base text-black hover:bg-gray-50"
+              >
+                {show ? 'Hide' : 'Show'}
+              </button>
+            </div>
+
+            <label className="block text-base font-semibold text-black mb-1">Confirm Password</label>
+            <input
+              type={show ? 'text' : 'password'}
+              className="w-full border rounded-md px-3 py-2 text-base text-black mb-3"
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+              autoComplete="new-password"
+            />
+
+            <button
+              type="button"
+              onClick={handleGenerate}
+              className="text-base text-[#0B2A4A] hover:underline mb-5"
+            >
+              Generate a random password
+            </button>
+
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={onClose}
+                disabled={saving}
+                className="border rounded-md px-4 py-2 text-base text-black hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSubmit}
+                disabled={saving}
+                className="bg-[#0B2A4A] hover:bg-[#123B63] disabled:bg-gray-400 text-white text-base font-medium px-4 py-2 rounded-md"
+              >
+                {saving ? 'Saving...' : 'Reset Password'}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function UserList() {
   const { user: currentUser } = useAuth();
 
@@ -30,6 +209,7 @@ export default function UserList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [busyId, setBusyId] = useState(null);
+  const [resetUser, setResetUser] = useState(null);
 
   const load = async () => {
     setLoading(true);
@@ -197,6 +377,13 @@ export default function UserList() {
                         Edit
                       </Link>
 
+                      <button
+                        onClick={() => setResetUser(u)}
+                        className="text-amber-600 hover:underline text-xs font-medium"
+                      >
+                        Reset Password
+                      </button>
+
                       {u.isActive ? (
                         <button
                           onClick={() => handleDeactivate(u)}
@@ -223,6 +410,10 @@ export default function UserList() {
           </tbody>
         </table>
       </div>
+
+      {resetUser && (
+        <ResetPasswordModal user={resetUser} onClose={() => setResetUser(null)} />
+      )}
 
     </div>
   );

@@ -1,4 +1,5 @@
 const { Op } = require('sequelize');
+const bcrypt = require('bcryptjs');
 const { User } = require('../models');
 
 // GET /api/users?search=&role=&isActive=
@@ -83,16 +84,15 @@ exports.remove = async (req, res) => {
   }
 };
 
-// userController.js
-const bcrypt = require('bcryptjs'); // au bcrypt, kulingana na ulivyotumia kwenye register
-
+// PUT /api/users/:id/reset-password  (admin pekee)
+// Admin anaweka password mpya kwa mtumiaji yeyote bila kujua ya zamani.
 exports.resetPassword = async (req, res) => {
   try {
     const user = await User.findByPk(req.params.id);
     if (!user) return res.status(404).json({ message: 'Mtumiaji hakuonekana.' });
 
     const { newPassword } = req.body;
-    if (!newPassword || newPassword.length < 6) {
+    if (typeof newPassword !== 'string' || newPassword.length < 6) {
       return res.status(400).json({ message: 'Password lazima iwe angalau herufi/namba 6.' });
     }
 
