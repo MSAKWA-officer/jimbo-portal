@@ -3,24 +3,24 @@ import { Link } from 'react-router-dom';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 
-// baseURL ya axios ina `/api` mwishoni, lakini faili (uploads) zinatolewa
-// na backend kwenye mzizi (`/uploads`), siyo `/api/uploads`. Kwa hiyo
-// tunaondoa `/api` kwenye baseURL kabla ya kujenga fileUrl.
-const API_ORIGIN = (api.defaults.baseURL || '').replace(/\/api\/?$/, '');
+// Loads the file through the API (GET /documents/:id/file) so the login
+// token is sent and the file path on the server does not matter.
+const readError = async (err, fallback) => {
+  const data = err.response?.data;
+  try {
+    if (data instanceof Blob) {
+      const parsed = JSON.parse(await data.text());
+      return parsed.message || fallback;
+    }
+  } catch {
+    /* ignore */
+  }
+  return data?.message || fallback;
+};
 
-// filePath iliyohifadhiwa database ni njia kamili (absolute path) ya
-// kwenye seva (mf. "/opt/render/project/src/uploads/documents/xxx.png"),
-// na hiyo njia inatofautiana kutegemea seva/hosting. Badala ya kujaribu
-// kukisia muundo mzima wa njia (kama kutafuta "/backend/"), tunachukua
-// sehemu inayoanzia "uploads/" pekee — ndiyo njia halisi ambayo backend
-// inaitolea (app.use('/uploads', ...)).
-const getFileUrl = (doc) => {
-  const normalized = (doc.filePath || '').replace(/\\/g, '/');
-  const marker = 'uploads/';
-  const idx = normalized.indexOf(marker);
-  const relativePath = idx !== -1 ? normalized.slice(idx) : `uploads/${normalized.split('/').pop()}`;
-
-  return `${API_ORIGIN}/${relativePath}`;
+const openDocumentFile = async (id) => {
+  const res = await api.get(`/documents/${id}/file`, { responseType: 'blob' });
+  return URL.createObjectURL(res.data);
 };
 
 const isImageFile = (fileName = '') => /\.(jpe?g|png|gif|webp)$/i.test(fileName);
@@ -57,6 +57,41 @@ export default function DocumentList() {
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState(null);
   const [previewDoc, setPreviewDoc] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState('');
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState('');
+
+  // Load the previewed file through the API whenever a document is selected
+  useEffect(() => {
+    if (!previewDoc) return undefined;
+
+    let url = '';
+    let cancelled = false;
+
+    setPreviewUrl('');
+    setPreviewError('');
+    setPreviewLoading(true);
+
+    (async () => {
+      try {
+        url = await openDocumentFile(previewDoc.id);
+        if (cancelled) {
+          URL.revokeObjectURL(url);
+          return;
+        }
+        setPreviewUrl(url);
+      } catch (err) {
+        if (!cancelled) setPreviewError(await readError(err, 'Failed to load the file.'));
+      } finally {
+        if (!cancelled) setPreviewLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      if (url) URL.revokeObjectURL(url);
+    };
+  }, [previewDoc]);
 
   const load = async () => {
     setLoading(true);
@@ -283,13 +318,15 @@ export default function DocumentList() {
               </h2>
 
               <div className="flex items-center gap-4 shrink-0">
-                <a
-                  href={getFileUrl(previewDoc)}
-                  download={previewDoc.fileName}
-                  className="text-sm text-[#0B2A4A] hover:underline font-medium"
-                >
-                  ⬇ Download
-                </a>
+                {previewUrl && (
+                  <a
+                    href={previewUrl}
+                    download={previewDoc.fileName}
+                    className="text-sm text-[#0B2A4A] hover:underline font-medium"
+                  >
+                    ⬇ Download
+                  </a>
+                )}
 
                 <button
                   onClick={() => setPreviewDoc(null)}
@@ -302,15 +339,19 @@ export default function DocumentList() {
             </div>
 
             <div className="p-4 overflow-auto flex-1 flex items-center justify-center bg-gray-50">
-              {isImageFile(previewDoc.fileName) ? (
+              {previewLoading ? (
+                <p className="text-base text-black py-8">Loading file...</p>
+              ) : previewError ? (
+                <p className="text-base text-red-600 text-center py-8">{previewError}</p>
+              ) : isImageFile(previewDoc.fileName) ? (
                 <img
-                  src={getFileUrl(previewDoc)}
+                  src={previewUrl}
                   alt={previewDoc.fileName}
                   className="max-w-full max-h-[75vh] object-contain rounded-md"
                 />
               ) : isPdfFile(previewDoc.fileName) ? (
                 <iframe
-                  src={getFileUrl(previewDoc)}
+                  src={previewUrl}
                   title={previewDoc.fileName}
                   className="w-full h-[75vh] rounded-md border-0"
                 />

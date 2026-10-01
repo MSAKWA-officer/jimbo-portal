@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../../api/axios';
+import { useAuth } from '../../context/AuthContext.jsx';
+
+// Who can delete applications (the backend should enforce this too)
+const CAN_DELETE_ROLES = ['admin'];
 
 const statusLabels = {
   pending: 'Pending',
@@ -138,7 +142,7 @@ function LetterViewer({ letter, onClose }) {
         </div>
 
         {/* Body */}
-        <div className="relative flex-1 bg-gray-100">
+        <div className="relative flex-1 min-h-0 bg-gray-100">
           {loading && (
             <div className="absolute inset-0 flex items-center justify-center text-sm text-gray-500">
               Loading letter...
@@ -146,7 +150,7 @@ function LetterViewer({ letter, onClose }) {
           )}
 
           {error && (
-            <div className="h-full flex items-center justify-center p-6">
+            <div className="absolute inset-0 flex items-center justify-center p-6">
               <div className="max-w-md text-center bg-red-50 text-red-700 text-sm px-4 py-3 rounded-md">
                 {error}
               </div>
@@ -154,20 +158,74 @@ function LetterViewer({ letter, onClose }) {
           )}
 
           {!error && blobUrl && kind === 'pdf' && (
-            <iframe title={letter.name} src={blobUrl} className="w-full h-full border-0" />
+            <iframe title={letter.name} src={blobUrl} className="absolute inset-0 w-full h-full border-0" />
           )}
 
           {!error && blobUrl && kind === 'image' && (
-            <div className="w-full h-full overflow-auto flex items-start justify-center p-4">
+            <div className="absolute inset-0 overflow-auto flex items-start justify-center p-4">
               <img src={blobUrl} alt={letter.name} className="max-w-full h-auto rounded shadow" />
             </div>
           )}
 
           {!error && blobUrl && kind === 'other' && (
-            <div className="h-full flex items-center justify-center text-sm text-gray-600">
+            <div className="absolute inset-0 flex items-center justify-center text-sm text-gray-600">
               This file type cannot be previewed. Use Download instead.
             </div>
           )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+// ---------------------------------------------------------------
+// Delete confirmation dialog
+// ---------------------------------------------------------------
+function ConfirmDelete({ target, deleting, onCancel, onConfirm }) {
+  useEffect(() => {
+    const onKey = (e) => e.key === 'Escape' && !deleting && onCancel();
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [deleting, onCancel]);
+
+  return (
+    <div
+      className="fixed inset-0 z-[110] bg-black/60 flex items-center justify-center p-4"
+      onClick={() => !deleting && onCancel()}
+      role="alertdialog"
+      aria-modal="true"
+    >
+      <div
+        className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mb-4">
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4m0 4h.01M10.3 3.9L2.4 18a2 2 0 001.7 3h15.8a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z" />
+          </svg>
+        </div>
+        <h2 className="text-lg font-bold text-gray-800">Delete application?</h2>
+        <p className="mt-2 text-sm text-gray-600">
+          You are about to delete <span className="font-semibold">{target.trackingNumber}</span>
+          {target.title ? <> — “{target.title}”</> : null}. This action cannot be undone.
+        </p>
+
+        <div className="mt-6 flex justify-end gap-2">
+          <button
+            onClick={onCancel}
+            disabled={deleting}
+            className="px-4 py-2 text-sm font-medium rounded-md bg-gray-100 hover:bg-gray-200 text-gray-700 disabled:opacity-60"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={deleting}
+            className="px-4 py-2 text-sm font-medium rounded-md bg-red-600 hover:bg-red-700 text-white disabled:opacity-60"
+          >
+            {deleting ? 'Deleting...' : 'Delete'}
+          </button>
         </div>
       </div>
     </div>
@@ -181,6 +239,10 @@ export default function ApplicationList() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [viewLetter, setViewLetter] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+  const { user } = useAuth();
+  const canDelete = CAN_DELETE_ROLES.includes(user?.role);
 
   const load = async () => {
     setLoading(true);
@@ -218,6 +280,22 @@ export default function ApplicationList() {
       load();
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to update the application status.');
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    setError('');
+    try {
+      await api.delete(`/requests/${deleteTarget.id}`);
+      setDeleteTarget(null);
+      load();
+    } catch (err) {
+      setDeleteTarget(null);
+      setError(err.response?.data?.message || 'Failed to delete the application.');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -366,12 +444,24 @@ export default function ApplicationList() {
                   </td>
 
                   <td className="px-4 py-3">
-                    <Link
-                      to={`/applications/${r.id}/edit`}
-                      className="text-[#0B2A4A] hover:underline text-xs font-medium"
-                    >
-                      Edit
-                    </Link>
+                    <div className="flex items-center gap-3">
+                      <Link
+                        to={`/applications/${r.id}/edit`}
+                        className="text-[#0B2A4A] hover:underline text-xs font-medium"
+                      >
+                        Edit
+                      </Link>
+
+                      {canDelete && (
+                        <button
+                          type="button"
+                          onClick={() => setDeleteTarget(r)}
+                          className="text-red-600 hover:text-red-800 hover:underline text-xs font-medium"
+                        >
+                          Delete
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))
@@ -381,6 +471,15 @@ export default function ApplicationList() {
       </div>
 
       {viewLetter && <LetterViewer letter={viewLetter} onClose={() => setViewLetter(null)} />}
+
+      {deleteTarget && (
+        <ConfirmDelete
+          target={deleteTarget}
+          deleting={deleting}
+          onCancel={() => setDeleteTarget(null)}
+          onConfirm={handleDelete}
+        />
+      )}
     </div>
   );
 }

@@ -1,4 +1,5 @@
 const fs = require('fs');
+const path = require('path');
 const { Op } = require('sequelize');
 
 const {
@@ -129,7 +130,7 @@ exports.create = async (req, res) => {
 
     const document = await Document.create({
       title: title.trim(),
-      documentType: documentType || 'other',
+      documentType: documentType || 'nyingine',
       description: description ? description.trim() : null,
 
       uploadedById: req.user.id,
@@ -261,6 +262,49 @@ exports.getStats = async (req, res) => {
 
     return res.status(500).json({
       message: 'Failed to retrieve document statistics.',
+      error: error.message,
+    });
+  }
+};
+
+// ==========================================
+// GET FILE (view/download the uploaded file)
+// GET /api/documents/:id/file
+// Njia ya faili kwenye seva haijalishi: tunajaribu njia iliyohifadhiwa,
+// kisha jina la faili ndani ya uploads/documents.
+// ==========================================
+exports.getFile = async (req, res) => {
+  try {
+    const document = await Document.findByPk(req.params.id);
+
+    if (!document || !document.filePath) {
+      return res.status(404).json({ message: 'Document not found.' });
+    }
+
+    const stored = String(document.filePath);
+    const docsDir = path.join(__dirname, '..', 'uploads', 'documents');
+
+    const candidates = [
+      stored,
+      path.join(docsDir, path.basename(stored.replace(/\\/g, '/'))),
+    ];
+
+    const filePath = candidates.find((p) => fs.existsSync(p));
+
+    if (!filePath) {
+      return res.status(404).json({
+        message:
+          'The file was not found on the server. Please upload the document again.',
+      });
+    }
+
+    res.setHeader('Content-Disposition', 'inline');
+    return res.sendFile(path.resolve(filePath));
+  } catch (error) {
+    console.error('GET DOCUMENT FILE ERROR:', error);
+
+    return res.status(500).json({
+      message: 'Failed to load the file.',
       error: error.message,
     });
   }

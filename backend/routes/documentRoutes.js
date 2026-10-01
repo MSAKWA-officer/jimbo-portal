@@ -14,6 +14,9 @@ router.get('/stats/summary', ctrl.getStats);
 // GET /api/documents
 router.get('/', ctrl.getAll);
 
+// GET /api/documents/:id/file  (view/download the uploaded file)
+router.get('/:id/file', ctrl.getFile);
+
 // GET /api/documents/:id
 router.get('/:id', ctrl.getOne);
 

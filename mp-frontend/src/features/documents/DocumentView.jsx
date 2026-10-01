@@ -15,8 +15,25 @@ const statusColors = {
   rejected: 'bg-red-100 text-red-800',
 };
 
-// Use the API base URL to build the link to the uploaded file (uploads static)
-const API_ORIGIN = (api.defaults.baseURL || '').replace(/\/api\/?$/, '');
+// Loads the file through the API (GET /documents/:id/file) so the login
+// token is sent and the file path on the server does not matter.
+const readError = async (err, fallback) => {
+  const data = err.response?.data;
+  try {
+    if (data instanceof Blob) {
+      const parsed = JSON.parse(await data.text());
+      return parsed.message || fallback;
+    }
+  } catch {
+    /* ignore */
+  }
+  return data?.message || fallback;
+};
+
+const openDocumentFile = async (id) => {
+  const res = await api.get(`/documents/${id}/file`, { responseType: 'blob' });
+  return URL.createObjectURL(res.data);
+};
 
 export default function DocumentView() {
   const { id } = useParams();
@@ -53,6 +70,19 @@ export default function DocumentView() {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  const openFile = async (e) => {
+    e.preventDefault();
+    setError('');
+
+    try {
+      const url = await openDocumentFile(id);
+      window.open(url, '_blank', 'noopener');
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (err) {
+      setError(await readError(err, 'Failed to open the file.'));
+    }
+  };
 
   const decide = async (status) => {
     setActing(true);
@@ -93,8 +123,6 @@ export default function DocumentView() {
       </div>
     );
   }
-
-  const fileUrl = `${API_ORIGIN}/${document.filePath.replace(/\\/g, '/').split('/backend/')[1] || document.filePath}`;
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8 bg-white border rounded-xl shadow-sm">
@@ -148,9 +176,8 @@ export default function DocumentView() {
       <div className="border rounded-lg p-4 bg-gray-50 mb-6">
         <p className="text-sm text-black mb-2">Uploaded File</p>
         <a
-          href={fileUrl}
-          target="_blank"
-          rel="noreferrer"
+          href="#"
+          onClick={openFile}
           className="text-[#0B2A4A] hover:underline text-base font-medium"
         >
           📄 {document.fileName} (Open/Download)
