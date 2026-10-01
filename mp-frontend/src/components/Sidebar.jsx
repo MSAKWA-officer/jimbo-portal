@@ -60,7 +60,7 @@ export default function Sidebar() {
       {/* Menu */}
       <nav className="flex-1 py-4 overflow-y-auto">
 
-        <NavLink to="/" end className={linkClass}>
+        <NavLink to="/dashboard" end className={linkClass}>
           <span></span>
           <span>Dashboard</span>
         </NavLink>
@@ -155,7 +155,7 @@ export default function Sidebar() {
             <p className={sectionLabelClass}>Usimamizi</p>
 
             <NavLink to="/users" className={linkClass}>
-              <span>🧑</span>
+              <span></span>
               <span>Users</span>
             </NavLink>
 
