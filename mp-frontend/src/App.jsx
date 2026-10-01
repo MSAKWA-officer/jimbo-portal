@@ -3,10 +3,16 @@ import { Routes, Route } from 'react-router-dom';
 
 import ProtectedRoute from './components/ProtectedRoute.jsx';
 import AdminLayout from './components/AdminLayout.jsx';
+import ScrollToTop from './components/ScrollToTop.jsx';
 
-// Pages
+// Public pages
+import Home from './pages/Home.jsx';
+import About from './pages/About.jsx';
+import Contacts from './pages/Contacts.jsx';
 import Login from './pages/Login.jsx';
 import Register from './pages/Register.jsx';
+
+// Protected pages
 import Dashboard from './pages/Dashboard.jsx';
 import ChangePassword from './pages/ChangePassword.jsx';
 
@@ -87,12 +93,6 @@ import FinancialReport from './features/reports/FinancialReport.jsx';
 import ProjectsReport from './features/reports/ProjectsReport.jsx';
 import ConstituentsReport from './features/reports/ConstituentsReport.jsx';
 
-//
-import About from './pages/About.jsx';
-import Contacts from './pages/Contacts.jsx';
-
-
-
 // Wrapper inayounganisha ProtectedRoute + AdminLayout kwa page zote za ndani
 function Protected({ children }) {
   return (
@@ -104,15 +104,18 @@ function Protected({ children }) {
 
 export default function App() {
   return (
+    <>
+    <ScrollToTop />
     <Routes>
       {/* Public routes */}
-      <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
+      <Route path="/" element={<Home />} />
       <Route path="/about" element={<About />} />
       <Route path="/contacts" element={<Contacts />} />
+      <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
 
-      {/* Dashboard */}
-      <Route path="/" element={<Protected><Dashboard /></Protected>} />
+      {/* Dashboard (moved from "/" to "/dashboard") */}
+      <Route path="/dashboard" element={<Protected><Dashboard /></Protected>} />
 
       {/* Change Password */}
       <Route path="/change-password" element={<Protected><ChangePassword /></Protected>} />
@@ -169,39 +172,9 @@ export default function App() {
       <Route path="/payments/:id/edit" element={<Protected><PaymentUpdate /></Protected>} />
 
       {/* Documents (Nakala) */}
-      
-<Route
-  path="/documents"
-  element={
-    <ProtectedRoute>
-      <AdminLayout>
-        <DocumentList />
-      </AdminLayout>
-    </ProtectedRoute>
-  }
-/>
-
-<Route
-  path="/documents/upload"
-  element={
-    <ProtectedRoute>
-      <AdminLayout>
-        <DocumentUpload />
-      </AdminLayout>
-    </ProtectedRoute>
-  }
-/>
-
-<Route
-  path="/documents/:id"
-  element={
-    <ProtectedRoute>
-      <AdminLayout>
-        <DocumentView />
-      </AdminLayout>
-    </ProtectedRoute>
-  }
-/>
+      <Route path="/documents" element={<Protected><DocumentList /></Protected>} />
+      <Route path="/documents/upload" element={<Protected><DocumentUpload /></Protected>} />
+      <Route path="/documents/:id" element={<Protected><DocumentView /></Protected>} />
 
       {/* Audit Logs (Kumbukumbu za Matendo) */}
       <Route path="/audit-logs" element={<Protected><AuditLogList /></Protected>} />
@@ -224,5 +197,6 @@ export default function App() {
       <Route path="/reports/projects" element={<Protected><ProjectsReport /></Protected>} />
       <Route path="/reports/constituents" element={<Protected><ConstituentsReport /></Protected>} />
     </Routes>
+    </>
   );
 }
