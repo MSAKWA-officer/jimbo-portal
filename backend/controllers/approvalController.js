@@ -1,4 +1,7 @@
+const { Op } = require('sequelize');
+
 const {
+  Document,
   Request,
   RequestApproval,
   RequestCategory,
@@ -44,7 +47,17 @@ exports.getPending = async (req, res) => {
         r.request.submittedById !== req.user.id
     );
 
-    return res.json(mine);
+    // Documents: only admins can decide them, and never their own uploads
+    let documents = [];
+    if (req.user.role === 'admin') {
+      documents = await Document.findAll({
+        where: { status: 'pending', uploadedById: { [Op.ne]: req.user.id } },
+        include: [{ model: User, as: 'uploadedBy', attributes: ['id', 'fullName'] }],
+        order: [['createdAt', 'ASC']],
+      });
+    }
+
+    return res.json({ applications: mine, documents });
   } catch (error) {
     console.error('GET PENDING APPROVALS ERROR:', error);
     return res.status(500).json({

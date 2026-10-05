@@ -18,7 +18,7 @@ const RequestApproval = sequelize.define(
     stepName: { type: DataTypes.STRING(100), allowNull: false, field: 'step_name' },
 
     // Roles allowed to decide this step, e.g. ["officer","admin"]
-    requiredRoles: { type: DataTypes.JSONB, allowNull: false, field: 'required_roles' },
+    requiredRoles: { type: DataTypes.JSON, allowNull: false, field: 'required_roles' },
 
     status: {
       type: DataTypes.ENUM('waiting', 'pending', 'approved', 'rejected', 'skipped'),

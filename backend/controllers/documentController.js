@@ -8,6 +8,9 @@ const {
   sequelize,
 } = require('../models');
 
+const { notifyUsers, notifyRoles } = require('../utils/approvalHelpers');
+const { recordAuditLog } = require('./auditLogController');
+
 // ==========================================
 // RELATIONS
 // ==========================================
@@ -142,6 +145,15 @@ exports.create = async (req, res) => {
       status: 'pending',
     });
 
+    // Tell the admins there is a new document to approve
+    await notifyRoles(['admin'], req.user.id, {
+      title: 'New document to approve',
+      message: `${document.title} was shared by ${req.user.fullName}.`,
+      type: 'info',
+      link: `/documents/${document.id}`,
+      createdById: req.user.id,
+    });
+
     const full = await Document.findByPk(document.id, {
       include: includeRelations,
     });
@@ -168,10 +180,18 @@ exports.updateStatus = async (req, res) => {
   try {
     const { status, approvalComment } = req.body;
 
-    const validStatuses = ['pending', 'approved', 'rejected'];
+    if (!['approved', 'rejected'].includes(status)) {
+      return res.status(400).json({
+        message: 'Status must be "approved" or "rejected".',
+      });
+    }
 
-    if (!validStatuses.includes(status)) {
-      return res.status(400).json({ message: 'Invalid status.' });
+    const comment = (approvalComment || '').trim();
+
+    if (status === 'rejected' && !comment) {
+      return res.status(400).json({
+        message: 'A comment is required when rejecting a document.',
+      });
     }
 
     const document = await Document.findByPk(req.params.id);
@@ -180,12 +200,45 @@ exports.updateStatus = async (req, res) => {
       return res.status(404).json({ message: 'Document not found.' });
     }
 
+    if (document.status !== 'pending') {
+      return res.status(400).json({
+        message: 'This document has already been decided.',
+      });
+    }
+
+    if (document.uploadedById === req.user.id) {
+      return res.status(403).json({
+        message: 'You cannot approve or reject a document you shared. Another admin must do it.',
+      });
+    }
+
     document.status = status;
-    document.approvalComment = approvalComment || null;
+    document.approvalComment = comment || null;
     document.approvedById = req.user.id;
     document.reviewedAt = new Date();
 
     await document.save();
+
+    await notifyUsers([document.uploadedById], {
+      title: status === 'approved' ? 'Document approved' : 'Document rejected',
+      message:
+        status === 'approved'
+          ? `"${document.title}" has been approved.`
+          : `"${document.title}" was rejected. Reason: ${comment}`,
+      type: status === 'approved' ? 'success' : 'error',
+      link: `/documents/${document.id}`,
+      createdById: req.user.id,
+    });
+
+    await recordAuditLog({
+      userId: req.user.id,
+      action: 'update',
+      entityType: 'Document',
+      entityId: document.id,
+      description: `${status === 'approved' ? 'Approved' : 'Rejected'} document "${document.title}"`,
+      changes: { status, comment: comment || null },
+      ipAddress: req.ip,
+    });
 
     const full = await Document.findByPk(document.id, {
       include: includeRelations,

@@ -48,6 +48,9 @@ export default function DocumentView() {
 
   const isAdmin = user?.role === 'admin';
 
+  // The person who shared a document cannot approve or reject it
+  const isOwnDocument = document?.uploadedById === user?.id;
+
   // Ruhusa ya kufuta - inaoana na documentRoutes.js (backend): admin pekee.
   const canDelete = isAdmin;
 
@@ -85,6 +88,11 @@ export default function DocumentView() {
   };
 
   const decide = async (status) => {
+    if (status === 'rejected' && !comment.trim()) {
+      setError('Please write the reason for rejecting this document.');
+      return;
+    }
+
     setActing(true);
     setError('');
 
@@ -185,10 +193,10 @@ export default function DocumentView() {
       </div>
 
       {/* APPROVAL - ADMIN ONLY */}
-      {isAdmin && document.status === 'pending' && (
+      {isAdmin && !isOwnDocument && document.status === 'pending' && (
         <div className="border border-[#0B2A4A]/20 rounded-lg p-4 bg-blue-50/40 mb-6">
           <label className="block text-base font-semibold text-[#0B2A4A] mb-2">
-            Approval Comment (optional)
+            Approval Comment (required when rejecting)
           </label>
 
           <textarea
@@ -217,6 +225,12 @@ export default function DocumentView() {
             </button>
           </div>
         </div>
+      )}
+
+      {isAdmin && isOwnDocument && document.status === 'pending' && (
+        <p className="text-sm text-gray-600 mb-6">
+          You shared this document, so another admin must approve it.
+        </p>
       )}
 
       {document.approvalComment && document.status !== 'pending' && (
