@@ -1,6 +1,23 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { Eye, Pencil, Trash2 } from 'lucide-react';
 import api from '../../api/axios';
+import {
+  ActionsCell,
+  EmptyRow,
+  ErrorBanner,
+  FilterBar,
+  IconAction,
+  ListCard,
+  ListHeader,
+  Pagination,
+  TableWrap,
+  Td,
+  Th,
+  inputClass,
+} from '../../components/ListUI.jsx';
+
+const PAGE_SIZE = 10;
 
 const formatDate = (d) => (d ? new Date(d).toLocaleDateString('en-US') : '—');
 
@@ -8,7 +25,14 @@ const statusStyles = {
   planned: 'bg-blue-100 text-blue-700',
   ongoing: 'bg-amber-100 text-amber-700',
   completed: 'bg-green-100 text-green-700',
-  cancelled: 'bg-gray-100 text-black',
+  cancelled: 'bg-gray-100 text-gray-700',
+};
+
+const statusDots = {
+  planned: 'bg-blue-500',
+  ongoing: 'bg-amber-500',
+  completed: 'bg-green-500',
+  cancelled: 'bg-gray-500',
 };
 
 const statusLabels = {
@@ -20,182 +44,188 @@ const statusLabels = {
 
 export default function ProjectActivityList() {
   const [searchParams] = useSearchParams();
-  const projectIdFilter = searchParams.get('projectId') || '';
 
   const [list, setList] = useState([]);
   const [projects, setProjects] = useState([]);
   const [filterStatus, setFilterStatus] = useState('');
-  const [filterProject, setFilterProject] = useState(projectIdFilter);
+  const [filterProject, setFilterProject] = useState(searchParams.get('projectId') || '');
+  const [page, setPage] = useState(1);
 
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
-  const load = async (statusFilter = filterStatus, projectId = filterProject) => {
-    setLoading(true);
-    setError('');
-
-    try {
-      const params = {};
-      if (statusFilter) params.status = statusFilter;
-      if (projectId) params.projectId = projectId;
-
-      const res = await api.get('/project-activities', { params });
-      setList(res.data);
-    } catch (err) {
-      setError(err.response?.data?.message || 'Failed to get the list of project activities.');
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Miradi kwa ajili ya kichujio
+  useEffect(() => {
+    api
+      .get('/projects')
+      .then((res) => setProjects(res.data))
+      .catch(() => {
+        /* kichujio tu - si lazima kisimamishe ukurasa */
+      });
+  }, []);
 
   useEffect(() => {
+    let cancelled = false;
+
     (async () => {
+      setLoading(true);
+      setError('');
+
       try {
-        const res = await api.get('/projects');
-        setProjects(res.data);
-      } catch {
-        // not necessary to stop the page if this fails
+        const params = {};
+        if (filterStatus) params.status = filterStatus;
+        if (filterProject) params.projectId = filterProject;
+
+        const res = await api.get('/project-activities', { params });
+        if (!cancelled) setList(res.data);
+      } catch (err) {
+        if (!cancelled) {
+          setError(err.response?.data?.message || 'Failed to get the list of project activities.');
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
       }
     })();
 
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const handleFilterStatus = (statusFilter) => {
-    setFilterStatus(statusFilter);
-    load(statusFilter, filterProject);
-  };
-
-  const handleFilterProject = (projectId) => {
-    setFilterProject(projectId);
-    load(filterStatus, projectId);
-  };
+    return () => {
+      cancelled = true;
+    };
+  }, [filterStatus, filterProject, reloadKey]);
 
   const remove = async (id) => {
-    if (!confirm('Are you sure you want to delete this project activity?')) return;
+    if (!window.confirm('Are you sure you want to delete this project activity?')) return;
+
+    setDeletingId(id);
+    setError('');
 
     try {
       await api.delete(`/project-activities/${id}`);
-      load();
+      setReloadKey((k) => k + 1);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to delete the activity.');
+    } finally {
+      setDeletingId(null);
     }
   };
 
+  const lastPage = Math.max(1, Math.ceil(list.length / PAGE_SIZE));
+  const currentPage = Math.min(page, lastPage);
+  const rows = list.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8 bg-white border rounded-xl shadow-sm">
+    <ListCard>
+      <ListHeader
+        title="Project Activities"
+        subtitle={`${list.length} registered`}
+        actionTo="/project-activities/create"
+        actionLabel="Add Activity"
+      />
 
-      {/* HEADER */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-3xl font-bold text-black">Project Activities</h1>
-        </div>
+      <ErrorBanner>{error}</ErrorBanner>
 
-        <Link
-          to="/project-activities/create"
-          className="bg-[#0B2A4A] hover:bg-[#123B63] text-white text-base font-medium px-4 py-2 rounded-md"
-        >
-          + Add Activity
-        </Link>
-      </div>
-
-      {error && (
-        <div className="text-base bg-red-50 text-red-700 px-3 py-2 rounded-md mb-4">{error}</div>
-      )}
-
-      {/* PROJECT FILTER */}
-      <div className="flex items-center gap-2 mb-4">
+      <FilterBar>
         <select
-          className="border rounded-md px-3 py-2 text-base text-black"
           value={filterProject}
-          onChange={(e) => handleFilterProject(e.target.value)}
+          onChange={(e) => {
+            setFilterProject(e.target.value);
+            setPage(1);
+          }}
+          className={`${inputClass} pr-8 max-w-full sm:max-w-[320px]`}
         >
-          <option value="">-- All Projects --</option>
+          <option value="">All projects</option>
           {projects.map((p) => (
             <option key={p.id} value={p.id}>
               {p.title}
             </option>
           ))}
         </select>
-      </div>
 
-      {/* STATUS FILTER */}
-      <div className="flex items-center gap-2 mb-4 flex-wrap">
-        {['', 'planned', 'ongoing', 'completed', 'cancelled'].map((s) => (
-          <button
-            key={s || 'all'}
-            onClick={() => handleFilterStatus(s)}
-            className={`text-base px-3 py-1.5 rounded-md font-medium ${
-              filterStatus === s
-                ? 'bg-[#0B2A4A] text-white'
-                : 'bg-gray-100 text-black hover:bg-gray-200'
-            }`}
-          >
-            {s ? statusLabels[s] : 'All'}
-          </button>
-        ))}
-      </div>
+        <select
+          value={filterStatus}
+          onChange={(e) => {
+            setFilterStatus(e.target.value);
+            setPage(1);
+          }}
+          className={`${inputClass} pr-8`}
+        >
+          <option value="">All statuses</option>
+          {Object.entries(statusLabels).map(([key, label]) => (
+            <option key={key} value={key}>
+              {label}
+            </option>
+          ))}
+        </select>
+      </FilterBar>
 
-      {/* TABLE */}
-      <div className="border rounded-xl overflow-x-auto">
-        <table className="w-full text-base">
-          <thead className="bg-gray-50 text-black text-left">
-            <tr>
-              <th className="px-4 py-3">Activity</th>
-              <th className="px-4 py-3">Project</th>
-              <th className="px-4 py-3">Date</th>
-              <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3">Actions</th>
-            </tr>
-          </thead>
+      <TableWrap>
+        <thead>
+          <tr>
+            <Th>Activity</Th>
+            <Th>Project</Th>
+            <Th>Date</Th>
+            <Th>Status</Th>
+            <Th>Actions</Th>
+          </tr>
+        </thead>
 
-          <tbody className="divide-y">
-            {loading ? (
-              <tr>
-                <td className="px-4 py-4 text-black" colSpan={5}>Loading...</td>
+        <tbody>
+          {loading ? (
+            <EmptyRow colSpan={5}>Loading...</EmptyRow>
+          ) : rows.length === 0 ? (
+            <EmptyRow colSpan={5}>No activities found.</EmptyRow>
+          ) : (
+            rows.map((a) => (
+              <tr key={a.id}>
+                <Td left>
+                  <Link
+                    to={`/project-activities/${a.id}`}
+                    className="font-semibold text-gray-900 hover:text-[#0b6e4f] hover:underline"
+                  >
+                    {a.title}
+                  </Link>
+                </Td>
+
+                <Td>{a.project?.title || '—'}</Td>
+                <Td className="whitespace-nowrap">{formatDate(a.activityDate)}</Td>
+
+                <Td>
+                  <span
+                    className={`inline-flex items-center gap-2 text-[13px] font-medium px-2.5 py-1.5 rounded-md ${
+                      statusStyles[a.status] || ''
+                    }`}
+                  >
+                    <span className={`w-2 h-2 rounded-full ${statusDots[a.status] || 'bg-gray-400'}`} />
+                    {statusLabels[a.status] || a.status}
+                  </span>
+                </Td>
+
+                <Td>
+                  <ActionsCell>
+                    <IconAction variant="view" title="View" to={`/project-activities/${a.id}`}>
+                      <Eye size={16} />
+                    </IconAction>
+                    <IconAction variant="edit" title="Edit" to={`/project-activities/${a.id}/edit`}>
+                      <Pencil size={16} />
+                    </IconAction>
+                    <IconAction
+                      variant="danger"
+                      title={deletingId === a.id ? 'Deleting...' : 'Delete'}
+                      disabled={deletingId === a.id}
+                      onClick={() => remove(a.id)}
+                    >
+                      <Trash2 size={16} />
+                    </IconAction>
+                  </ActionsCell>
+                </Td>
               </tr>
-            ) : list.length === 0 ? (
-              <tr>
-                <td className="px-4 py-4 text-black" colSpan={5}>No activities registered yet.</td>
-              </tr>
-            ) : (
-              list.map((a) => (
-                <tr key={a.id}>
-                  <td className="px-4 py-3">
-                    <Link to={`/project-activities/${a.id}`} className="text-[#0B2A4A] hover:underline font-semibold">
-                      {a.title}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3 text-black">{a.project?.title || '—'}</td>
-                  <td className="px-4 py-3 text-black">{formatDate(a.activityDate)}</td>
-                  <td className="px-4 py-3">
-                    <span className={`text-sm font-medium px-2 py-1 rounded-full ${statusStyles[a.status]}`}>
-                      {statusLabels[a.status]}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-3 flex-wrap">
-                      <Link to={`/project-activities/${a.id}`} className="text-black hover:underline text-sm font-medium">
-                        View
-                      </Link>
-                      <Link to={`/project-activities/${a.id}/edit`} className="text-[#0B2A4A] hover:underline text-sm font-medium">
-                        Edit
-                      </Link>
-                      <button
-                        onClick={() => remove(a.id)}
-                        className="text-red-600 hover:underline text-sm font-medium"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-    </div>
+            ))
+          )}
+        </tbody>
+      </TableWrap>
+
+      <Pagination page={currentPage} pageSize={PAGE_SIZE} total={list.length} onChange={setPage} />
+    </ListCard>
   );
 }

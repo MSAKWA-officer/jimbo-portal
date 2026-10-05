@@ -1,7 +1,24 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Eye, Paperclip, Pencil, Trash2 } from 'lucide-react';
 import api from '../../api/axios';
+import LetterViewer from './LetterViewer.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
+import {
+  ActionsCell,
+  EmptyRow,
+  ErrorBanner,
+  FilterBar,
+  IconAction,
+  ListCard,
+  ListHeader,
+  Pagination,
+  TableWrap,
+  Td,
+  Th,
+  inputClass,
+} from '../../components/ListUI.jsx';
+
+const PAGE_SIZE = 10;
 
 // Who can delete applications (the backend should enforce this too)
 const CAN_DELETE_ROLES = ['admin'];
@@ -22,162 +39,13 @@ const statusColors = {
   completed: 'bg-gray-200 text-gray-800',
 };
 
-// ---------------------------------------------------------------
-// Letter viewer (modal)
-// Loads the letter through the API (GET /requests/:id/letter) so the
-// login token is sent and the file path on the server does not matter.
-// ---------------------------------------------------------------
-const readError = async (err, fallback) => {
-  const data = err.response?.data;
-  try {
-    if (data instanceof Blob) {
-      const parsed = JSON.parse(await data.text());
-      return parsed.message || fallback;
-    }
-  } catch {
-    /* ignore */
-  }
-  return data?.message || fallback;
+const statusDots = {
+  pending: 'bg-yellow-500',
+  in_review: 'bg-blue-500',
+  approved: 'bg-green-500',
+  rejected: 'bg-red-500',
+  completed: 'bg-gray-500',
 };
-
-function LetterViewer({ letter, onClose }) {
-  const [blobUrl, setBlobUrl] = useState('');
-  const [kind, setKind] = useState('pdf'); // pdf | image | other
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-
-  useEffect(() => {
-    let url = '';
-    let cancelled = false;
-
-    (async () => {
-      try {
-        const res = await api.get(`/requests/${letter.requestId}/letter`, {
-          responseType: 'blob',
-        });
-        if (cancelled) return;
-
-        const type = res.data.type || '';
-        const ext = String(letter.name || '').split('.').pop().toLowerCase();
-        if (type.includes('pdf') || ext === 'pdf') setKind('pdf');
-        else if (type.startsWith('image/') || ['jpg', 'jpeg', 'png'].includes(ext)) setKind('image');
-        else setKind('other');
-
-        url = URL.createObjectURL(res.data);
-        setBlobUrl(url);
-      } catch (err) {
-        if (!cancelled) setError(await readError(err, 'Failed to load the letter.'));
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-      if (url) URL.revokeObjectURL(url);
-    };
-  }, [letter.requestId, letter.name]);
-
-  // Close with Esc + lock page scroll while open
-  useEffect(() => {
-    const onKey = (e) => e.key === 'Escape' && onClose();
-    document.addEventListener('keydown', onKey);
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.removeEventListener('keydown', onKey);
-      document.body.style.overflow = prev;
-    };
-  }, [onClose]);
-
-  return (
-    <div
-      className="fixed inset-0 z-[100] bg-black/60 flex items-center justify-center p-4"
-      onClick={onClose}
-      role="dialog"
-      aria-modal="true"
-      aria-label="Identification letter"
-    >
-      <div
-        className="bg-white rounded-xl shadow-2xl w-full max-w-5xl h-[90vh] flex flex-col overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between gap-4 px-5 py-3 border-b">
-          <div className="min-w-0">
-            <p className="font-semibold text-gray-800 truncate">{letter.name}</p>
-            <p className="text-xs text-gray-500 truncate">
-              {letter.trackingNumber} · {letter.title}
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2 shrink-0">
-            {blobUrl && (
-              <>
-                <a
-                  href={blobUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-xs font-medium px-3 py-1.5 rounded-md bg-gray-100 hover:bg-gray-200 text-gray-700"
-                >
-                  Open in new tab
-                </a>
-                <a
-                  href={blobUrl}
-                  download={letter.name}
-                  className="text-xs font-medium px-3 py-1.5 rounded-md bg-[#0B2A4A] hover:bg-[#123B63] text-white"
-                >
-                  Download
-                </a>
-              </>
-            )}
-            <button
-              onClick={onClose}
-              aria-label="Close"
-              className="w-8 h-8 rounded-md text-gray-500 hover:bg-gray-100 hover:text-gray-800 text-xl leading-none"
-            >
-              ×
-            </button>
-          </div>
-        </div>
-
-        {/* Body */}
-        <div className="relative flex-1 min-h-0 bg-gray-100">
-          {loading && (
-            <div className="absolute inset-0 flex items-center justify-center text-sm text-gray-500">
-              Loading letter...
-            </div>
-          )}
-
-          {error && (
-            <div className="absolute inset-0 flex items-center justify-center p-6">
-              <div className="max-w-md text-center bg-red-50 text-red-700 text-sm px-4 py-3 rounded-md">
-                {error}
-              </div>
-            </div>
-          )}
-
-          {!error && blobUrl && kind === 'pdf' && (
-            <iframe title={letter.name} src={blobUrl} className="absolute inset-0 w-full h-full border-0" />
-          )}
-
-          {!error && blobUrl && kind === 'image' && (
-            <div className="absolute inset-0 overflow-auto flex items-start justify-center p-4">
-              <img src={blobUrl} alt={letter.name} className="max-w-full h-auto rounded shadow" />
-            </div>
-          )}
-
-          {!error && blobUrl && kind === 'other' && (
-            <div className="absolute inset-0 flex items-center justify-center text-sm text-gray-600">
-              This file type cannot be previewed. Use Download instead.
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 
 // ---------------------------------------------------------------
 // Delete confirmation dialog
@@ -234,50 +102,73 @@ function ConfirmDelete({ target, deleting, onCancel, onConfirm }) {
 
 export default function ApplicationList() {
   const [list, setList] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [categories, setCategories] = useState([]);
   const [statusFilter, setStatusFilter] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('');
   const [search, setSearch] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [viewLetter, setViewLetter] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const { user } = useAuth();
   const canDelete = CAN_DELETE_ROLES.includes(user?.role);
 
-  const load = async () => {
-    setLoading(true);
-    setError('');
+  const reload = () => setReloadKey((k) => k + 1);
 
-    try {
-      const { data } = await api.get('/requests', {
-        params: {
-          status: statusFilter || undefined,
-          search: search || undefined,
-        },
-      });
-
-      setList(data.data);
-    } catch (err) {
-      setError(err.response?.data?.message || 'Failed to load the applications list.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // Kategoria kwa ajili ya kichujio
   useEffect(() => {
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [statusFilter]);
+    api
+      .get('/categories')
+      .then(({ data }) => setCategories(data))
+      .catch(() => {
+        /* kichujio tu - si lazima kisimamishe ukurasa */
+      });
+  }, []);
 
-  const handleSearchSubmit = (e) => {
-    e.preventDefault();
-    load();
-  };
+  // Pakia orodha (search inachelewa 300ms)
+  useEffect(() => {
+    let cancelled = false;
+
+    const timer = setTimeout(async () => {
+      setLoading(true);
+      setError('');
+
+      try {
+        const { data } = await api.get('/requests', {
+          params: {
+            status: statusFilter || undefined,
+            categoryId: categoryFilter || undefined,
+            search: search || undefined,
+            page,
+            limit: PAGE_SIZE,
+          },
+        });
+        if (cancelled) return;
+        setList(data.data);
+        setTotal(data.total ?? data.data.length);
+      } catch (err) {
+        if (!cancelled) {
+          setError(err.response?.data?.message || 'Failed to load the applications list.');
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }, 300);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [search, statusFilter, categoryFilter, page, reloadKey]);
 
   const changeStatus = async (id, status) => {
     try {
       await api.patch(`/requests/${id}/status`, { status });
-      load();
+      reload();
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to update the application status.');
     }
@@ -290,7 +181,9 @@ export default function ApplicationList() {
     try {
       await api.delete(`/requests/${deleteTarget.id}`);
       setDeleteTarget(null);
-      load();
+      // Kama ulifuta mwisho wa ukurasa, rudi ukurasa uliotangulia
+      if (list.length === 1 && page > 1) setPage(page - 1);
+      else reload();
     } catch (err) {
       setDeleteTarget(null);
       setError(err.response?.data?.message || 'Failed to delete the application.');
@@ -307,168 +200,161 @@ export default function ApplicationList() {
       title: r.title,
     });
 
+  const selectClass = `${inputClass} pr-8`;
+
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8 bg-white border rounded-xl shadow-sm">
-      {/* HEADER */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-800">Applications</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Complete list of all submitted applications.
-          </p>
-        </div>
+    <ListCard>
+      <ListHeader
+        title="Applications"
+        subtitle={`${total} registered`}
+        actionTo="/applications/create"
+        actionLabel="New Application"
+      />
 
-        <Link
-          to="/applications/create"
-          className="bg-[#0B2A4A] hover:bg-[#123B63] text-white text-sm font-medium px-4 py-2 rounded-md"
-        >
-          + New Application
-        </Link>
-      </div>
+      <ErrorBanner>{error}</ErrorBanner>
 
-      {error && (
-        <div className="text-sm bg-red-50 text-red-700 px-3 py-2 rounded-md mb-4">{error}</div>
-      )}
-
-      {/* SEARCH */}
-      <form onSubmit={handleSearchSubmit} className="flex gap-2 mb-4">
+      {/* FILTERS */}
+      <FilterBar>
         <input
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search by title or tracking number..."
-          className="flex-1 border rounded-md px-3 py-2 text-sm"
+          onChange={(e) => {
+            setSearch(e.target.value);
+            setPage(1);
+          }}
+          placeholder="Search title or tracking no."
+          className={`${inputClass} w-full sm:w-[300px]`}
         />
 
-        <button
-          type="submit"
-          className="bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium px-4 py-2 rounded-md"
+        <select
+          value={categoryFilter}
+          onChange={(e) => {
+            setCategoryFilter(e.target.value);
+            setPage(1);
+          }}
+          className={selectClass}
         >
-          Search
-        </button>
-      </form>
+          <option value="">All categories</option>
+          {categories.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
 
-      {/* STATUS FILTER */}
-      <div className="flex gap-2 mb-4 flex-wrap">
-        <button
-          onClick={() => setStatusFilter('')}
-          className={`text-sm px-3 py-1.5 rounded-md ${
-            !statusFilter ? 'bg-[#0B2A4A] text-white' : 'bg-gray-100 text-gray-700'
-          }`}
+        <select
+          value={statusFilter}
+          onChange={(e) => {
+            setStatusFilter(e.target.value);
+            setPage(1);
+          }}
+          className={selectClass}
         >
-          All
-        </button>
-
-        {Object.entries(statusLabels).map(([key, label]) => (
-          <button
-            key={key}
-            onClick={() => setStatusFilter(key)}
-            className={`text-sm px-3 py-1.5 rounded-md ${
-              statusFilter === key ? 'bg-[#0B2A4A] text-white' : 'bg-gray-100 text-gray-700'
-            }`}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+          <option value="">All statuses</option>
+          {Object.entries(statusLabels).map(([key, label]) => (
+            <option key={key} value={key}>
+              {label}
+            </option>
+          ))}
+        </select>
+      </FilterBar>
 
       {/* TABLE */}
-      <div className="border rounded-xl overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50 text-gray-600 text-left">
-            <tr>
-              <th className="px-4 py-3">Tracking No.</th>
-              <th className="px-4 py-3">Title</th>
-              <th className="px-4 py-3">Constituent</th>
-              <th className="px-4 py-3">Category</th>
-              <th className="px-4 py-3">Letter</th>
-              <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3">Actions</th>
-            </tr>
-          </thead>
+      <TableWrap>
+        <thead>
+          <tr>
+            <Th>Tracking No.</Th>
+            <Th>Title</Th>
+            <Th>Constituent</Th>
+            <Th>Category</Th>
+            <Th>Letter</Th>
+            <Th>Status</Th>
+            <Th>Actions</Th>
+          </tr>
+        </thead>
 
-          <tbody className="divide-y">
-            {loading ? (
-              <tr>
-                <td className="px-4 py-4 text-gray-500" colSpan={7}>
-                  Loading...
-                </td>
-              </tr>
-            ) : list.length === 0 ? (
-              <tr>
-                <td className="px-4 py-4 text-gray-500" colSpan={7}>
-                  No applications yet.
-                </td>
-              </tr>
-            ) : (
-              list.map((r) => (
-                <tr key={r.id}>
-                  <td className="px-4 py-3 font-mono text-xs text-gray-600">{r.trackingNumber}</td>
+        <tbody>
+          {loading ? (
+            <EmptyRow colSpan={7}>Loading...</EmptyRow>
+          ) : list.length === 0 ? (
+            <EmptyRow colSpan={7}>No applications found.</EmptyRow>
+          ) : (
+            list.map((r) => (
+              <tr key={r.id}>
+                <Td className="font-mono text-[13px] whitespace-nowrap">{r.trackingNumber}</Td>
 
-                  <td className="px-4 py-3 font-medium text-gray-800">{r.title}</td>
+                <Td left className="font-semibold">{r.title}</Td>
 
-                  <td className="px-4 py-3 text-gray-600">{r.constituent?.fullName || '-'}</td>
+                <Td>{r.constituent?.fullName || '-'}</Td>
 
-                  <td className="px-4 py-3 text-gray-600">{r.category?.name || '-'}</td>
+                <Td>{r.category?.name || '-'}</Td>
 
-                  <td className="px-4 py-3">
-                    {r.identificationLetterName ? (
+                <Td>
+                  {r.identificationLetterName ? (
+                    <button
+                      type="button"
+                      onClick={() => openLetter(r)}
+                      title={`Open ${r.identificationLetterName}`}
+                      className="inline-flex items-center gap-1.5 text-green-700 font-medium hover:text-green-900 hover:underline"
+                    >
+                      <Paperclip size={14} />
+                      Attached
+                    </button>
+                  ) : (
+                    <span className="text-red-600">None</span>
+                  )}
+                </Td>
+
+                <Td>
+                  <span className="inline-flex items-center gap-2">
+                    <span
+                      className={`inline-flex items-center gap-2 text-[13px] font-medium px-2.5 py-1 rounded-md ${
+                        statusColors[r.status] || ''
+                      }`}
+                    >
+                      <span
+                        className={`w-2 h-2 rounded-full ${
+                          statusDots[r.status] || 'bg-gray-400'
+                        }`}
+                      />
+                      {statusLabels[r.status] || r.status}
+                    </span>
+
+                    {r.status === 'approved' && (
                       <button
                         type="button"
-                        onClick={() => openLetter(r)}
-                        title={r.identificationLetterName}
-                        className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-md bg-green-50 text-green-700 hover:bg-green-100 border border-green-200 transition"
+                        onClick={() => changeStatus(r.id, 'completed')}
+                        className="text-[12px] text-blue-700 hover:underline"
                       >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" />
-                          <circle cx="12" cy="12" r="3" />
-                        </svg>
-                        View
+                        Mark completed
                       </button>
-                    ) : (
-                      <span className="text-red-600 text-xs">None</span>
                     )}
-                  </td>
+                  </span>
+                </Td>
 
-                  <td className="px-4 py-3">
-                    <select
-                      value={r.status}
-                      onChange={(e) => changeStatus(r.id, e.target.value)}
-                      className={`text-xs font-medium px-2 py-1 rounded-md border-0 ${statusColors[r.status]}`}
-                    >
-                      {Object.entries(statusLabels).map(([key, label]) => (
-                        <option key={key} value={key}>
-                          {label}
-                        </option>
-                      ))}
-                    </select>
-                  </td>
+                <Td>
+                  <ActionsCell>
+                    <IconAction variant="view" title="View application" to={`/applications/${r.id}`}>
+                      <Eye size={16} />
+                    </IconAction>
 
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-3">
-                      <Link
-                        to={`/applications/${r.id}/edit`}
-                        className="text-[#0B2A4A] hover:underline text-xs font-medium"
-                      >
-                        Edit
-                      </Link>
+                    <IconAction variant="edit" title="Edit" to={`/applications/${r.id}/edit`}>
+                      <Pencil size={16} />
+                    </IconAction>
 
-                      {canDelete && (
-                        <button
-                          type="button"
-                          onClick={() => setDeleteTarget(r)}
-                          className="text-red-600 hover:text-red-800 hover:underline text-xs font-medium"
-                        >
-                          Delete
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+                    {canDelete && (
+                      <IconAction variant="danger" title="Delete" onClick={() => setDeleteTarget(r)}>
+                        <Trash2 size={16} />
+                      </IconAction>
+                    )}
+                  </ActionsCell>
+                </Td>
+              </tr>
+            ))
+          )}
+        </tbody>
+      </TableWrap>
+
+      <Pagination page={page} pageSize={PAGE_SIZE} total={total} onChange={setPage} />
 
       {viewLetter && <LetterViewer letter={viewLetter} onClose={() => setViewLetter(null)} />}
 
@@ -480,6 +366,6 @@ export default function ApplicationList() {
           onConfirm={handleDelete}
         />
       )}
-    </div>
+    </ListCard>
   );
 }

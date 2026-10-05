@@ -10,6 +10,12 @@ const {
   sequelize,
 } = require('../models');
 
+const {
+  STEPS,
+  ensureSteps,
+  notifyRoles,
+} = require('../utils/approvalHelpers');
+
 // ==========================================
 // GENERATE TRACKING NUMBER
 // ==========================================
@@ -221,6 +227,17 @@ exports.create = async (req, res) => {
           new Date(),
       });
 
+    // Start the approval workflow and tell the first-step approvers
+    await ensureSteps(request);
+
+    await notifyRoles(STEPS[0].roles, req.user.id, {
+      title: 'New application to review',
+      message: `${request.trackingNumber} - ${request.title}`,
+      type: 'info',
+      link: `/applications/${request.id}`,
+      createdById: req.user.id,
+    });
+
     const full =
       await Request.findByPk(
         request.id,
@@ -265,7 +282,16 @@ exports.update = async (req, res) => {
       });
     }
 
-    await request.update(req.body);
+    // Status/tracking number/owner cannot be changed from the edit form
+    // (status is managed by the approval workflow)
+    const {
+      status,
+      trackingNumber,
+      submittedById,
+      ...safe
+    } = req.body;
+
+    await request.update(safe);
 
     const full =
       await Request.findByPk(
@@ -298,18 +324,10 @@ exports.updateStatus = async (req, res) => {
   try {
     const { status } = req.body;
 
-    const validStatuses = [
-      'pending',
-      'in_review',
-      'approved',
-      'rejected',
-      'completed',
-    ];
-
-    if (!validStatuses.includes(status)) {
+    if (status !== 'completed') {
       return res.status(400).json({
         message:
-          'Hali (status) siyo sahihi.',
+          'Approval status is managed by the approval workflow. Only "completed" can be set here.',
       });
     }
 
@@ -321,6 +339,13 @@ exports.updateStatus = async (req, res) => {
     if (!request) {
       return res.status(404).json({
         message: 'Ombi halikuonekana.',
+      });
+    }
+
+    if (request.status !== 'approved') {
+      return res.status(400).json({
+        message:
+          'Only approved applications can be marked as completed.',
       });
     }
 

@@ -1,46 +1,69 @@
 import { useEffect, useState } from 'react';
+import { Pencil, Trash2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { Link } from 'react-router-dom';
 import api from '../../api/axios';
+import {
+  ActionsCell,
+  EmptyRow,
+  ErrorBanner,
+  FilterBar,
+  IconAction,
+  ListCard,
+  ListHeader,
+  Pagination,
+  TableWrap,
+  Td,
+  Th,
+  inputClass,
+} from '../../components/ListUI.jsx';
+
+const PAGE_SIZE = 10;
 
 export default function ConstituentsList() {
   const [list, setList] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [deletingId, setDeletingId] = useState(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
 
-  const load = async () => {
-    setLoading(true);
-    setError('');
-
-    try {
-      const { data } = await api.get('/constituents', {
-        params: { search: search || undefined },
-      });
-      setList(data.data);
-    } catch (err) {
-      setError(
-        err.response?.data?.message || 'Failed to load the list of constituents.'
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // Pakia orodha (search inachelewa 300ms ili isitume ombi kila herufi)
   useEffect(() => {
-    const timer = setTimeout(load, 300);
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search]);
+    let cancelled = false;
+
+    const timer = setTimeout(async () => {
+      setLoading(true);
+      setError('');
+
+      try {
+        const { data } = await api.get('/constituents', {
+          params: { search: search || undefined, page, limit: PAGE_SIZE },
+        });
+        if (cancelled) return;
+        setList(data.data);
+        setTotal(data.total ?? data.data.length);
+      } catch (err) {
+        if (!cancelled) {
+          setError(err.response?.data?.message || 'Failed to load the list of constituents.');
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }, 300);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [search, page, reloadKey]);
 
   const handleDelete = async (id, name) => {
-    const confirmed = window.confirm(
-      `Are you sure you want to delete "${name}"?`
-    );
+    const confirmed = window.confirm(`Are you sure you want to delete "${name}"?`);
     if (!confirmed) return;
 
     setError('');
@@ -48,108 +71,86 @@ export default function ConstituentsList() {
 
     try {
       await api.delete(`/constituents/${id}`);
-      setList((prev) => prev.filter((c) => c.id !== id));
+      // Kama ulifuta mwisho wa ukurasa, rudi ukurasa uliotangulia
+      if (list.length === 1 && page > 1) setPage(page - 1);
+      else setReloadKey((k) => k + 1);
     } catch (err) {
-      setError(
-        err.response?.data?.message || 'Failed to delete the constituent.'
-      );
+      setError(err.response?.data?.message || 'Failed to delete the constituent.');
     } finally {
       setDeletingId(null);
     }
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8 bg-white border rounded-xl shadow-sm">
+    <ListCard>
+      <ListHeader
+        title="Constituents"
+        subtitle={`${total} registered`}
+        actionTo="/constituents/create"
+        actionLabel="Add Constituent"
+      />
 
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-black">Constituents</h1>
-      
-        </div>
+      <ErrorBanner>{error}</ErrorBanner>
 
-        <Link
-          to="/constituents/create"
-          className="bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium px-4 py-2 rounded-md"
-        >
-          + Add Constituent
-        </Link>
-      </div>
-
-      {error && (
-        <div className="text-sm bg-red-50 text-red-700 px-3 py-2 rounded-md mb-4">
-          {error}
-        </div>
-      )}
-
-      <div className="mb-4">
+      <FilterBar>
         <input
-          placeholder="Search by name, phone, or National ID..."
-          className="w-full border rounded-md px-3 py-2 text-sm"
+          placeholder="Search by name, phone, or National ID"
+          className={`${inputClass} w-full sm:w-[360px]`}
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            setPage(1);
+          }}
         />
-      </div>
+      </FilterBar>
 
-      <div className="border rounded-xl overflow-x-auto bg-gray-200">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-300 text-black text-left">
-            <tr>
-              <th className="px-4 py-3 font-semibold">Name</th>
-              <th className="px-4 py-3 font-semibold">Phone</th>
-              <th className="px-4 py-3 font-semibold">Ward/Village</th>
-              <th className="px-4 py-3 font-semibold">National ID</th>
-              <th className="px-4 py-3 font-semibold">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-300">
-            {loading ? (
-              <tr>
-                <td className="px-4 py-4 text-black bg-white" colSpan={5}>
-                  Loading...
-                </td>
-              </tr>
-            ) : list.length === 0 ? (
-              <tr>
-                <td className="px-4 py-4 text-black bg-white" colSpan={5}>
-                  No constituents yet.
-                </td>
-              </tr>
-            ) : (
-              list.map((c) => (
-                <tr key={c.id} className="bg-white">
-                  <td className="px-4 py-3 font-medium text-black">{c.fullName}</td>
-                  <td className="px-4 py-3 text-black">{c.phone || '-'}</td>
-                  <td className="px-4 py-3 text-black">
-                    {[c.ward, c.village].filter(Boolean).join(' / ') || '-'}
-                  </td>
-                  <td className="px-4 py-3 text-black">{c.nationalId || '-'}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-3">
-                      <Link
-                        to={`/constituents/${c.id}/edit`}
-                        className="text-brand-700 hover:underline text-xs font-medium"
+      <TableWrap>
+        <thead>
+          <tr>
+            <Th>Name</Th>
+            <Th>Phone</Th>
+            <Th>Ward / Village</Th>
+            <Th>National ID</Th>
+            <Th>Actions</Th>
+          </tr>
+        </thead>
+        <tbody>
+          {loading ? (
+            <EmptyRow colSpan={5}>Loading...</EmptyRow>
+          ) : list.length === 0 ? (
+            <EmptyRow colSpan={5}>No constituents found.</EmptyRow>
+          ) : (
+            list.map((c) => (
+              <tr key={c.id}>
+                <Td left className="font-semibold">{c.fullName}</Td>
+                <Td>{c.phone || '-'}</Td>
+                <Td>{[c.ward, c.village].filter(Boolean).join(' / ') || '-'}</Td>
+                <Td>{c.nationalId || '-'}</Td>
+                <Td>
+                  <ActionsCell>
+                    <IconAction variant="edit" title="Edit" to={`/constituents/${c.id}/edit`}>
+                      <Pencil size={16} />
+                    </IconAction>
+
+                    {isAdmin && (
+                      <IconAction
+                        variant="danger"
+                        title={deletingId === c.id ? 'Deleting...' : 'Delete'}
+                        disabled={deletingId === c.id}
+                        onClick={() => handleDelete(c.id, c.fullName)}
                       >
-                        Edit
-                      </Link>
+                        <Trash2 size={16} />
+                      </IconAction>
+                    )}
+                  </ActionsCell>
+                </Td>
+              </tr>
+            ))
+          )}
+        </tbody>
+      </TableWrap>
 
-                      {isAdmin && (
-                        <button
-                          onClick={() => handleDelete(c.id, c.fullName)}
-                          disabled={deletingId === c.id}
-                          className="text-red-600 hover:underline text-xs font-medium disabled:text-gray-400"
-                        >
-                          {deletingId === c.id ? 'Deleting...' : 'Delete'}
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-
-    </div>
+      <Pagination page={page} pageSize={PAGE_SIZE} total={total} onChange={setPage} />
+    </ListCard>
   );
 }

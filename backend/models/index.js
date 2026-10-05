@@ -13,6 +13,7 @@ const ProjectActivity = require('./ProjectActivity');
 const AuditLog = require('./AuditLog');
 const Document = require('./Document');
 const Notification = require('./Notification');
+const RequestApproval = require('./RequestApproval');
 
 // ------------------- MAHUSIANO (ASSOCIATIONS) -------------------
 
@@ -112,6 +113,14 @@ Notification.belongsTo(User, { foreignKey: 'userId', as: 'recipient' });
 User.hasMany(Notification, { foreignKey: 'createdById', as: 'sentNotifications' });
 Notification.belongsTo(User, { foreignKey: 'createdById', as: 'createdBy' });
 
+// Request (1) --- (N) RequestApproval  (hatua za idhini za ombi)
+Request.hasMany(RequestApproval, { foreignKey: 'requestId', as: 'approvals' });
+RequestApproval.belongsTo(Request, { foreignKey: 'requestId', as: 'request' });
+
+// User (1) --- (N) RequestApproval (mtumiaji aliyetoa uamuzi)
+User.hasMany(RequestApproval, { foreignKey: 'actedById', as: 'actedApprovals' });
+RequestApproval.belongsTo(User, { foreignKey: 'actedById', as: 'actedBy' });
+
 // ------------------------------------------------------------------
 
 // Kazi ya kuunganisha na kutengeneza tables zote (Awamu ya 1)
@@ -147,4 +156,5 @@ module.exports = {
   AuditLog,
   Document,
   Notification,
+  RequestApproval,
 };

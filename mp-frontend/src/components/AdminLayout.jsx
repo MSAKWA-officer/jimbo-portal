@@ -1,16 +1,38 @@
-import React from "react";
-import Sidebar from "./Sidebar";
-import Header from "./Header";
+import React, { useState } from 'react';
+import Sidebar from './Sidebar';
+import Header from './Header';
+
+const SIDEBAR_WIDTH = 265;
+const isDesktop = () =>
+  typeof window !== 'undefined' && window.innerWidth >= 1024;
 
 export default function AdminLayout({ children }) {
+  const [sidebarOpen, setSidebarOpen] = useState(isDesktop());
+
+  // Kwenye simu/tablet, funga sidebar baada ya kubofya link
+  const handleNavigate = () => {
+    if (!isDesktop()) setSidebarOpen(false);
+  };
+
   return (
-    <div className="flex min-h-screen w-full">
-      <Sidebar />
+    <div className="min-h-screen w-full bg-[#f1f1f1]">
+      <Sidebar open={sidebarOpen} onNavigate={handleNavigate} width={SIDEBAR_WIDTH} />
 
-      <div className="flex-1 min-w-0 ml-64">
-        <Header />
+      {/* Backdrop kwa simu/tablet */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 top-[75px] bg-black/40 z-30 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
 
-        <main className="w-full min-h-[calc(100vh-4rem)] p-6 overflow-x-auto">
+      <div
+        className="min-w-0 transition-[margin] duration-200"
+        style={{ marginLeft: sidebarOpen && isDesktop() ? SIDEBAR_WIDTH : 0 }}
+      >
+        <Header onToggleSidebar={() => setSidebarOpen((v) => !v)} />
+
+        <main className="w-full px-3 sm:px-5 pt-4 pb-10 overflow-x-auto">
           {children}
         </main>
       </div>

@@ -3,7 +3,7 @@ const express = require('express');
 const router = express.Router();
 
 const ctrl = require('../controllers/requestController');
-const { protect } = require('../middleware/auth');
+const { protect, authorize } = require('../middleware/auth');
 const uploadLetter = require('../middleware/uploadLetter');
 
 router.use(protect);
@@ -31,7 +31,11 @@ router.post(
 router.put('/:id', ctrl.update);
 
 // PATCH /api/requests/:id/status
-router.patch('/:id/status', ctrl.updateStatus);
+router.patch(
+  '/:id/status',
+  authorize('admin', 'staff', 'officer'),
+  ctrl.updateStatus
+);
 
 // DELETE /api/requests/:id
 router.delete('/:id', ctrl.remove);

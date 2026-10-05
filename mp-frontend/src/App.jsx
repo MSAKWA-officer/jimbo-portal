@@ -30,6 +30,10 @@ import CategoriesUpdate from './features/categories/CategoriesUpdate.jsx';
 import ApplicationList from './features/applications/ApplicationList.jsx';
 import ApplicationCreate from './features/applications/ApplicationCreate.jsx';
 import ApplicationUpdate from './features/applications/ApplicationUpdate.jsx';
+import ApplicationView from './features/applications/ApplicationView.jsx';
+
+// Approvals
+import ApprovalQueue from './features/approvals/ApprovalQueue.jsx';
 
 // Events
 import EventList from './features/events/EventList.jsx';
@@ -134,6 +138,10 @@ export default function App() {
       <Route path="/applications" element={<Protected><ApplicationList /></Protected>} />
       <Route path="/applications/create" element={<Protected><ApplicationCreate /></Protected>} />
       <Route path="/applications/:id/edit" element={<Protected><ApplicationUpdate /></Protected>} />
+      <Route path="/applications/:id" element={<Protected><ApplicationView /></Protected>} />
+
+      {/* Approvals (Idhini) */}
+      <Route path="/approvals" element={<Protected><ApprovalQueue /></Protected>} />
 
       {/* Events (Matukio) */}
       <Route path="/events" element={<Protected><EventList /></Protected>} />

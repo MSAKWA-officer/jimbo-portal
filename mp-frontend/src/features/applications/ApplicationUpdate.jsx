@@ -23,8 +23,10 @@ export default function ApplicationUpdate() {
     title: '',
     description: '',
     priority: 'medium',
-    status: 'pending',
   });
+
+  // Read-only: status is managed by the approval workflow
+  const [currentStatus, setCurrentStatus] = useState('pending');
 
   const [trackingNumber, setTrackingNumber] = useState('');
   const [identificationLetterName, setIdentificationLetterName] =
@@ -53,8 +55,9 @@ export default function ApplicationUpdate() {
         title: r.title || '',
         description: r.description || '',
         priority: r.priority || 'medium',
-        status: r.status || 'pending',
       });
+
+      setCurrentStatus(r.status || 'pending');
 
       setTrackingNumber(r.trackingNumber || '');
       setIdentificationLetterName(r.identificationLetterName || '');
@@ -88,10 +91,6 @@ export default function ApplicationUpdate() {
         title: form.title,
         description: form.description,
         priority: form.priority,
-      });
-
-      await api.patch(`/requests/${id}/status`, {
-        status: form.status,
       });
 
       navigate('/applications');
@@ -217,19 +216,12 @@ export default function ApplicationUpdate() {
               <option value="urgent">Priority: Urgent</option>
             </select>
 
-            <select
-              className="border rounded-md px-3 py-2 text-base text-black"
-              value={form.status}
-              onChange={(e) =>
-                setForm({ ...form, status: e.target.value })
-              }
-            >
-              {Object.entries(statusLabels).map(([key, label]) => (
-                <option key={key} value={key}>
-                  Status: {label}
-                </option>
-              ))}
-            </select>
+            <div className="border rounded-md px-3 py-2 text-base text-gray-700 bg-gray-50">
+              Status: {statusLabels[currentStatus] || currentStatus}
+              <span className="block text-xs text-gray-500">
+                Managed by the approval workflow
+              </span>
+            </div>
 
           </div>
 

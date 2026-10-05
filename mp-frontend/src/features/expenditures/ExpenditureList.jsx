@@ -1,6 +1,25 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Eye, Pencil, Trash2 } from 'lucide-react';
 import api from '../../api/axios';
+import {
+  ActionsCell,
+  EmptyRow,
+  ErrorBanner,
+  FilterBar,
+  IconAction,
+  ListCard,
+  ListHeader,
+  Pagination,
+  SummaryBox,
+  SummaryGrid,
+  TableWrap,
+  Td,
+  Th,
+  inputClass,
+} from '../../components/ListUI.jsx';
+
+const PAGE_SIZE = 10;
 
 const currency = (n) =>
   new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(Number(n) || 0);
@@ -10,160 +29,155 @@ const formatDate = (d) => (d ? new Date(d).toLocaleDateString('en-US') : '—');
 export default function ExpenditureList() {
   const [list, setList] = useState([]);
   const [filterYear, setFilterYear] = useState('');
+  const [page, setPage] = useState(1);
 
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
-  const load = async (yearFilter = filterYear) => {
-    setLoading(true);
+  // Pakia orodha (mwaka wa fedha unachelewa 300ms)
+  useEffect(() => {
+    let cancelled = false;
+
+    const timer = setTimeout(async () => {
+      setLoading(true);
+      setError('');
+
+      try {
+        const params = filterYear.trim() ? { fiscalYear: filterYear.trim() } : {};
+        const res = await api.get('/expenditures', { params });
+        if (!cancelled) setList(res.data);
+      } catch (err) {
+        if (!cancelled) {
+          setError(err.response?.data?.message || 'Failed to fetch the list of expenditures.');
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }, 300);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [filterYear, reloadKey]);
+
+  const remove = async (id) => {
+    if (
+      !window.confirm(
+        'Are you sure you want to delete this expenditure? The related budget balance will be restored.'
+      )
+    ) {
+      return;
+    }
+
+    setDeletingId(id);
     setError('');
 
     try {
-      const params = yearFilter ? { fiscalYear: yearFilter } : {};
-      const res = await api.get('/expenditures', { params });
-      setList(res.data);
-    } catch (err) {
-      setError(err.response?.data?.message || 'Failed to fetch the list of expenditures.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const handleFilter = (e) => {
-    e.preventDefault();
-    load(filterYear);
-  };
-
-  const remove = async (id) => {
-    if (!confirm('Are you sure you want to delete this expenditure? The related budget balance will be restored.')) return;
-
-    try {
       await api.delete(`/expenditures/${id}`);
-      load();
+      setReloadKey((k) => k + 1);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to delete the expenditure.');
+    } finally {
+      setDeletingId(null);
     }
   };
 
   const totalAmount = list.reduce((sum, e) => sum + Number(e.amount), 0);
 
+  const lastPage = Math.max(1, Math.ceil(list.length / PAGE_SIZE));
+  const currentPage = Math.min(page, lastPage);
+  const rows = list.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
   return (
-    <div className="font-serif max-w-6xl mx-auto px-4 py-8 bg-white border rounded-xl shadow-sm">
+    <ListCard>
+      <ListHeader
+        title="Expenditures"
+        subtitle={`${list.length} recorded`}
+        actionTo="/expenditures/create"
+        actionLabel="Record New Expenditure"
+      />
 
-      {/* HEADER */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-black">Expenditures</h1>
-        </div>
+      <ErrorBanner>{error}</ErrorBanner>
 
-        <Link
-          to="/expenditures/create"
-          className="bg-[#0B2A4A] hover:bg-[#123B63] text-white text-sm font-medium px-4 py-2 rounded-md"
-        >
-          + Record New Expenditure
-        </Link>
-      </div>
+      <SummaryGrid>
+        <SummaryBox label="Total expenditures shown" value={`TZS ${currency(totalAmount)}`} />
+      </SummaryGrid>
 
-      {error && (
-        <div className="text-sm bg-red-50 text-red-700 px-3 py-2 rounded-md mb-4">{error}</div>
-      )}
-
-      {/* SUMMARY */}
-      <div className="bg-white border rounded-xl p-5 shadow-sm mb-6 max-w-xs">
-        <p className="text-sm text-black">Total Expenditures Shown</p>
-        <p className="text-2xl font-bold text-black mt-1">TZS {currency(totalAmount)}</p>
-      </div>
-
-      {/* FISCAL YEAR FILTER (VIA BUDGET) */}
-      <form onSubmit={handleFilter} className="flex items-center gap-3 mb-4">
+      <FilterBar>
         <input
-          placeholder="Filter by Fiscal Year (e.g. 2025/2026)"
-          className="border rounded-md px-3 py-2 text-sm w-72 text-black"
+          placeholder="Filter by fiscal year (e.g. 2025/2026)"
+          className={`${inputClass} w-full sm:w-[320px]`}
           value={filterYear}
-          onChange={(e) => setFilterYear(e.target.value)}
+          onChange={(e) => {
+            setFilterYear(e.target.value);
+            setPage(1);
+          }}
         />
-        <button type="submit" className="bg-gray-100 hover:bg-gray-200 text-black text-sm font-medium px-4 py-2 rounded-md">
-          Filter
-        </button>
-        {filterYear && (
-          <button
-            type="button"
-            className="text-sm text-black hover:underline"
-            onClick={() => {
-              setFilterYear('');
-              load('');
-            }}
-          >
-            Clear Filter
-          </button>
-        )}
-      </form>
+      </FilterBar>
 
-      {/* TABLE */}
-      <div className="border rounded-xl overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50 text-black text-left">
-            <tr>
-              <th className="px-4 py-3">Date</th>
-              <th className="px-4 py-3">Request (Tracking No.)</th>
-              <th className="px-4 py-3">Category</th>
-              <th className="px-4 py-3">Fiscal Year</th>
-              <th className="px-4 py-3">Amount</th>
-              <th className="px-4 py-3">Recorded By</th>
-              <th className="px-4 py-3">Actions</th>
-            </tr>
-          </thead>
+      <TableWrap>
+        <thead>
+          <tr>
+            <Th>Date</Th>
+            <Th>Request (tracking no.)</Th>
+            <Th>Category</Th>
+            <Th>Fiscal year</Th>
+            <Th>Amount</Th>
+            <Th>Recorded by</Th>
+            <Th>Actions</Th>
+          </tr>
+        </thead>
 
-          <tbody className="divide-y">
-            {loading ? (
-              <tr>
-                <td className="px-4 py-4 text-black" colSpan={7}>Loading...</td>
+        <tbody>
+          {loading ? (
+            <EmptyRow colSpan={7}>Loading...</EmptyRow>
+          ) : rows.length === 0 ? (
+            <EmptyRow colSpan={7}>No expenditures found.</EmptyRow>
+          ) : (
+            rows.map((e) => (
+              <tr key={e.id}>
+                <Td className="whitespace-nowrap">{formatDate(e.expenditureDate)}</Td>
+
+                <Td left>
+                  <Link to={`/expenditures/${e.id}`} className="font-semibold text-gray-900 hover:text-[#0b6e4f] hover:underline">
+                    {e.request?.trackingNumber || '—'}
+                  </Link>
+                  {e.request?.title && <div className="text-[13px] text-gray-500">{e.request.title}</div>}
+                </Td>
+
+                <Td>{e.budget?.category?.name || '—'}</Td>
+                <Td>{e.budget?.fiscalYear || '—'}</Td>
+                <Td className="whitespace-nowrap font-semibold">TZS {currency(e.amount)}</Td>
+                <Td>{e.recordedBy?.fullName || '—'}</Td>
+
+                <Td>
+                  <ActionsCell>
+                    <IconAction variant="view" title="View" to={`/expenditures/${e.id}`}>
+                      <Eye size={16} />
+                    </IconAction>
+                    <IconAction variant="edit" title="Edit" to={`/expenditures/${e.id}/edit`}>
+                      <Pencil size={16} />
+                    </IconAction>
+                    <IconAction
+                      variant="danger"
+                      title={deletingId === e.id ? 'Deleting...' : 'Delete'}
+                      disabled={deletingId === e.id}
+                      onClick={() => remove(e.id)}
+                    >
+                      <Trash2 size={16} />
+                    </IconAction>
+                  </ActionsCell>
+                </Td>
               </tr>
-            ) : list.length === 0 ? (
-              <tr>
-                <td className="px-4 py-4 text-black" colSpan={7}>No expenditures recorded yet.</td>
-              </tr>
-            ) : (
-              list.map((e) => (
-                <tr key={e.id}>
-                  <td className="px-4 py-3 text-black">{formatDate(e.expenditureDate)}</td>
-                  <td className="px-4 py-3">
-                    <Link to={`/expenditures/${e.id}`} className="text-black hover:underline font-medium">
-                      {e.request?.trackingNumber || '—'}
-                    </Link>
-                    <div className="text-xs text-black">{e.request?.title}</div>
-                  </td>
-                  <td className="px-4 py-3 text-black">{e.budget?.category?.name || '—'}</td>
-                  <td className="px-4 py-3 text-black">{e.budget?.fiscalYear || '—'}</td>
-                  <td className="px-4 py-3 font-medium text-black">TZS {currency(e.amount)}</td>
-                  <td className="px-4 py-3 text-black">{e.recordedBy?.fullName || '—'}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-3">
-                      <Link to={`/expenditures/${e.id}`} className="text-black hover:underline text-xs font-medium">
-                        View
-                      </Link>
-                      <Link to={`/expenditures/${e.id}/edit`} className="text-black hover:underline text-xs font-medium">
-                        Edit
-                      </Link>
-                      <button
-                        onClick={() => remove(e.id)}
-                        className="text-red-600 hover:underline text-xs font-medium"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-    </div>
+            ))
+          )}
+        </tbody>
+      </TableWrap>
+
+      <Pagination page={currentPage} pageSize={PAGE_SIZE} total={list.length} onChange={setPage} />
+    </ListCard>
   );
 }

@@ -1,6 +1,23 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Eye, Pencil, Trash2 } from 'lucide-react';
 import api from '../../api/axios';
+import {
+  ActionsCell,
+  EmptyRow,
+  ErrorBanner,
+  FilterBar,
+  IconAction,
+  ListCard,
+  ListHeader,
+  Pagination,
+  TableWrap,
+  Td,
+  Th,
+  inputClass,
+} from '../../components/ListUI.jsx';
+
+const PAGE_SIZE = 10;
 
 const formatDate = (d) =>
   d ? new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '—';
@@ -9,7 +26,14 @@ const statusStyles = {
   scheduled: 'bg-blue-100 text-blue-700',
   ongoing: 'bg-amber-100 text-amber-700',
   completed: 'bg-green-100 text-green-700',
-  cancelled: 'bg-gray-100 text-black',
+  cancelled: 'bg-gray-100 text-gray-700',
+};
+
+const statusDots = {
+  scheduled: 'bg-blue-500',
+  ongoing: 'bg-amber-500',
+  completed: 'bg-green-500',
+  cancelled: 'bg-gray-500',
 };
 
 const statusLabels = {
@@ -23,174 +47,187 @@ export default function EventList() {
   const [list, setList] = useState([]);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
+  const [page, setPage] = useState(1);
 
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
-  const load = async (statusFilter = filterStatus, searchTerm = search) => {
-    setLoading(true);
+  // Pakia orodha (search inachelewa 300ms). Kurasa zinafanyika kwenye browser.
+  useEffect(() => {
+    let cancelled = false;
+
+    const timer = setTimeout(async () => {
+      setLoading(true);
+      setError('');
+
+      try {
+        const params = {};
+        if (filterStatus) params.status = filterStatus;
+        if (search) params.search = search;
+
+        const res = await api.get('/events', { params });
+        if (!cancelled) setList(res.data);
+      } catch (err) {
+        if (!cancelled) {
+          setError(err.response?.data?.message || 'Failed to get the list of events.');
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }, 300);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [search, filterStatus, reloadKey]);
+
+  const remove = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this event? Its attendees will also be removed.')) {
+      return;
+    }
+
+    setDeletingId(id);
     setError('');
 
     try {
-      const params = {};
-      if (statusFilter) params.status = statusFilter;
-      if (searchTerm) params.search = searchTerm;
-
-      const res = await api.get('/events', { params });
-      setList(res.data);
-    } catch (err) {
-      setError(err.response?.data?.message || 'Failed to get the list of events.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const handleFilter = (statusFilter) => {
-    setFilterStatus(statusFilter);
-    load(statusFilter, search);
-  };
-
-  const handleSearch = (e) => {
-    e.preventDefault();
-    load(filterStatus, search);
-  };
-
-  const remove = async (id) => {
-    if (!confirm('Are you sure you want to delete this event? Its attendees will also be removed.')) return;
-
-    try {
       await api.delete(`/events/${id}`);
-      load();
+      setReloadKey((k) => k + 1);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to delete the event.');
+    } finally {
+      setDeletingId(null);
     }
   };
 
+  const lastPage = Math.max(1, Math.ceil(list.length / PAGE_SIZE));
+  const currentPage = Math.min(page, lastPage);
+  const rows = list.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8 bg-white border rounded-xl shadow-sm">
+    <ListCard>
+      <ListHeader
+        title="Events"
+        subtitle={`${list.length} registered`}
+        actionTo="/events/create"
+        actionLabel="Add Event"
+      />
 
-      {/* HEADER */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-3xl font-bold text-black">Events</h1>
-        
-        </div>
+      <ErrorBanner>{error}</ErrorBanner>
 
-        <Link
-          to="/events/create"
-          className="bg-[#0B2A4A] hover:bg-[#123B63] text-white text-base font-medium px-4 py-2 rounded-md"
-        >
-          + Add Event
-        </Link>
-      </div>
-
-      {error && (
-        <div className="text-base bg-red-50 text-red-700 px-3 py-2 rounded-md mb-4">{error}</div>
-      )}
-
-      {/* SEARCH */}
-      <form onSubmit={handleSearch} className="flex items-center gap-2 mb-4">
+      {/* FILTERS */}
+      <FilterBar>
         <input
-          placeholder="Search by event name or location..."
-          className="border rounded-md px-3 py-2 text-base text-black flex-1"
+          placeholder="Search event name or location"
+          className={`${inputClass} w-full sm:w-[320px]`}
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            setPage(1);
+          }}
         />
-        <button
-          type="submit"
-          className="bg-gray-100 hover:bg-gray-200 text-black text-base font-medium px-4 py-2 rounded-md"
-        >
-          Search
-        </button>
-      </form>
 
-      {/* STATUS FILTER */}
-      <div className="flex items-center gap-2 mb-4">
-        {['', 'scheduled', 'ongoing', 'completed', 'cancelled'].map((s) => (
-          <button
-            key={s || 'all'}
-            onClick={() => handleFilter(s)}
-            className={`text-base px-3 py-1.5 rounded-md font-medium ${
-              filterStatus === s
-                ? 'bg-[#0B2A4A] text-white'
-                : 'bg-gray-100 text-black hover:bg-gray-200'
-            }`}
-          >
-            {s ? statusLabels[s] : 'All'}
-          </button>
-        ))}
-      </div>
+        <select
+          value={filterStatus}
+          onChange={(e) => {
+            setFilterStatus(e.target.value);
+            setPage(1);
+          }}
+          className={`${inputClass} pr-8`}
+        >
+          <option value="">All statuses</option>
+          {Object.entries(statusLabels).map(([key, label]) => (
+            <option key={key} value={key}>
+              {label}
+            </option>
+          ))}
+        </select>
+      </FilterBar>
 
       {/* TABLE */}
-      <div className="border rounded-xl overflow-x-auto">
-        <table className="w-full text-base">
-          <thead className="bg-gray-50 text-black text-left">
-            <tr>
-              <th className="px-4 py-3">Date</th>
-              <th className="px-4 py-3">Event Name</th>
-              <th className="px-4 py-3">Location</th>
-              <th className="px-4 py-3">Attendees</th>
-              <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3">Actions</th>
-            </tr>
-          </thead>
+      <TableWrap>
+        <thead>
+          <tr>
+            <Th>Date</Th>
+            <Th>Event name</Th>
+            <Th>Location</Th>
+            <Th>Attendees</Th>
+            <Th>Status</Th>
+            <Th>Actions</Th>
+          </tr>
+        </thead>
 
-          <tbody className="divide-y">
-            {loading ? (
-              <tr>
-                <td className="px-4 py-4 text-black" colSpan={6}>Loading...</td>
+        <tbody>
+          {loading ? (
+            <EmptyRow colSpan={6}>Loading...</EmptyRow>
+          ) : rows.length === 0 ? (
+            <EmptyRow colSpan={6}>No events found.</EmptyRow>
+          ) : (
+            rows.map((ev) => (
+              <tr key={ev.id}>
+                <Td className="whitespace-nowrap">{formatDate(ev.eventDate)}</Td>
+
+                <Td left>
+                  <Link to={`/events/${ev.id}`} className="font-semibold text-gray-900 hover:text-[#0b6e4f] hover:underline">
+                    {ev.title}
+                  </Link>
+                  {ev.organizer?.fullName && (
+                    <div className="text-[13px] text-gray-500">{ev.organizer.fullName}</div>
+                  )}
+                </Td>
+
+                <Td>{ev.location || '—'}</Td>
+
+                <Td>
+                  {ev.attendees ? ev.attendees.length : (ev.attendeeCount ?? '—')}
+                  {ev.capacity ? ` / ${ev.capacity}` : ''}
+                </Td>
+
+                <Td>
+                  <span
+                    className={`inline-flex items-center gap-2 text-[13px] font-medium px-2.5 py-1.5 rounded-md ${
+                      statusStyles[ev.status] || ''
+                    }`}
+                  >
+                    <span className={`w-2 h-2 rounded-full ${statusDots[ev.status] || 'bg-gray-400'}`} />
+                    {statusLabels[ev.status] || ev.status}
+                  </span>
+                </Td>
+
+                <Td>
+                  <ActionsCell>
+                    <IconAction variant="view" title="View" to={`/events/${ev.id}`}>
+                      <Eye size={16} />
+                    </IconAction>
+
+                    <IconAction variant="edit" title="Edit" to={`/events/${ev.id}/edit`}>
+                      <Pencil size={16} />
+                    </IconAction>
+
+                    <IconAction
+                      variant="danger"
+                      title={deletingId === ev.id ? 'Deleting...' : 'Delete'}
+                      disabled={deletingId === ev.id}
+                      onClick={() => remove(ev.id)}
+                    >
+                      <Trash2 size={16} />
+                    </IconAction>
+                  </ActionsCell>
+                </Td>
               </tr>
-            ) : list.length === 0 ? (
-              <tr>
-                <td className="px-4 py-4 text-black" colSpan={6}>No events organized yet.</td>
-              </tr>
-            ) : (
-              list.map((ev) => (
-                <tr key={ev.id}>
-                  <td className="px-4 py-3 text-black">{formatDate(ev.eventDate)}</td>
-                  <td className="px-4 py-3">
-                    <Link to={`/events/${ev.id}`} className="text-[#0B2A4A] hover:underline font-semibold">
-                      {ev.title}
-                    </Link>
-                    <div className="text-sm text-black">{ev.organizer?.fullName}</div>
-                  </td>
-                  <td className="px-4 py-3 text-black">{ev.location || '—'}</td>
-                  <td className="px-4 py-3 text-black">
-                    {ev.attendees ? ev.attendees.length : (ev.attendeeCount ?? '—')}
-                    {ev.capacity ? ` / ${ev.capacity}` : ''}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`text-sm font-medium px-2 py-1 rounded-full ${statusStyles[ev.status]}`}>
-                      {statusLabels[ev.status]}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-3 flex-wrap">
-                      <Link to={`/events/${ev.id}`} className="text-black hover:underline text-sm font-medium">
-                        View
-                      </Link>
-                      <Link to={`/events/${ev.id}/edit`} className="text-[#0B2A4A] hover:underline text-sm font-medium">
-                        Edit
-                      </Link>
-                      <button
-                        onClick={() => remove(ev.id)}
-                        className="text-red-600 hover:underline text-sm font-medium"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-    </div>
+            ))
+          )}
+        </tbody>
+      </TableWrap>
+
+      <Pagination
+        page={currentPage}
+        pageSize={PAGE_SIZE}
+        total={list.length}
+        onChange={setPage}
+      />
+    </ListCard>
   );
 }

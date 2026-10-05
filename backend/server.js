@@ -22,6 +22,8 @@ const userRoutes = require('./routes/userRoutes');
 const documentRoutes = require('./routes/documentRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const reportRoutes = require('./routes/reportRoutes');
+const approvalRoutes = require('./routes/approvalRoutes');
+const { backfillAll } = require('./utils/approvalHelpers');
 
 
 const app = express();
@@ -105,6 +107,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/documents', documentRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api/approvals', approvalRoutes);
 // ==========================================
 // 404
 // ==========================================
@@ -144,6 +147,9 @@ const PORT =
 const start = async () => {
   try {
     await syncDatabase();
+
+    // Gives existing requests their approval steps
+    await backfillAll();
 
     app.listen(
       PORT,

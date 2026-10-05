@@ -3,15 +3,8 @@
 @tailwind utilities;
 
 /*
-  UKUBWA WA HERUFI (FONT SIZE) WA MFUMO MZIMA
-  --------------------------------------------
-  Tailwind (text-sm, text-base, text-lg, text-xl, n.k.) inatumia "rem",
-  ambayo inategemea font-size ya <html>. Kwa hiyo ukibadilisha thamani
-  hapa chini pekee, HERUFI ZOTE kwenye mfumo mzima (sidebar, majedwali,
-  fomu, vitufe, n.k.) zinabadilika kwa uwiano sawa - bila kugusa faili
-  nyingine yoyote.
-
-  100% = 1rem = 16px (hii ndiyo thamani ya sasa - "size 16")
+  FONT SIZE: Tailwind (text-sm, text-base, n.k.) inatumia "rem" kutoka <html>.
+  Badilisha thamani hapa chini kubadilisha ukubwa wa herufi za mfumo mzima.
 */
 html {
   font-size: 100%;
@@ -28,15 +21,19 @@ body,
   min-height: 100%;
 }
 
-/*
-  AINA YA HERUFI (FONT FAMILY) YA MFUMO MZIMA
-  ---------------------------------------------
-  Kwa vile hakuna component yoyote (Sidebar, majedwali, fomu, n.k.)
-  inayoweka font-family yake yenyewe, ubadilishaji hapa chini pekee
-  unabadilisha herufi za mfumo mzima kuwa Times New Roman.
-*/
+/* FONT FAMILY ya mfumo mzima: Open Sans (imepakiwa kwenye index.html) */
 body {
-  font-family: 'Times New Roman', Times, serif;
-  font-size: 18px;
-  background: #f5f7fb;
+  font-family: 'Open Sans', Arial, Helvetica, sans-serif;
+  font-size: 14px;
+  color: #333;
+  background: #f1f1f1;
+}
+
+/* Scrollbar nyembamba kwa sidebar */
+.thin-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.thin-scroll::-webkit-scrollbar-thumb {
+  background: #c4cad3;
+  border-radius: 3px;
 }
