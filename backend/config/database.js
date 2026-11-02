@@ -17,13 +17,20 @@ if (!['mysql', 'postgres'].includes(dialect)) {
 // Aiven) bado inatumika kwa sababu ipo wazi kwenye .env, hii ni fallback tu.
 const defaultPort = dialect === 'postgres' ? 5432 : 3306;
 
+// SSL huwashwa kama DB_SSL=true AU DATABASE_URL inaelekeza Render/Aiven AU ina sslmode.
+// Hii inazuia kosa "Connection terminated unexpectedly" kama DB_SSL imesahaulika Render.
+const dbUrl = process.env.DATABASE_URL || '';
+const useSsl =
+  process.env.DB_SSL === 'true' ||
+  /render\.com|aivencloud\.com|sslmode=require/i.test(dbUrl);
+
 const sslOptions = {
   dialectOptions: {
     // Aiven (MySQL) na Render (PostgreSQL) zote zinahitaji SSL kwa muunganiko
     // wa nje — muundo huu huu unafanya kazi kwa madereva yote mawili
     // (mysql2 na pg), hivyo hakuna haja ya kubadilisha chochote hapa
     // unapobadilisha DB_DIALECT.
-    ssl: process.env.DB_SSL === 'true' ? {
+    ssl: useSsl ? {
       require: true,
       rejectUnauthorized: false // Inakubali cheti la Aiven/Render bila kuhitaji kupakua faili la .pem
     } : false
