@@ -19,7 +19,7 @@ const defaultPort = dialect === 'postgres' ? 5432 : 3306;
 
 // SSL huwashwa kama DB_SSL=true AU DATABASE_URL inaelekeza Render/Aiven AU ina sslmode.
 // Hii inazuia kosa "Connection terminated unexpectedly" kama DB_SSL imesahaulika Render.
-const dbUrl = process.env.DATABASE_URL || '';
+const dbUrl = `${process.env.DATABASE_URL || ''} ${process.env.DB_HOST || ''}`;
 const useSsl =
   process.env.DB_SSL === 'true' ||
   /render\.com|aivencloud\.com|sslmode=require/i.test(dbUrl);
@@ -51,6 +51,18 @@ const commonOptions = {
 // "postgresql://user:pass@host:port/dbname") AU DB_HOST/DB_USER/DB_PASSWORD/
 // DB_NAME tofauti (mfano wa Aiven wako wa sasa). Ukiweka DATABASE_URL, hiyo
 // ndiyo itatumika — hakuna haja ya kuigawa vipande vipande wewe mwenyewe.
+// Onyesha database inayotumika (bila password) ili logs za Render zionyeshe ukweli.
+try {
+  const target = process.env.DATABASE_URL
+    ? new URL(process.env.DATABASE_URL)
+    : { hostname: process.env.DB_HOST, port: process.env.DB_PORT };
+  console.log(
+    `DB target: ${dialect}://${target.hostname}:${target.port || defaultPort} (ssl=${useSsl}, via ${process.env.DATABASE_URL ? 'DATABASE_URL' : 'DB_HOST'})`
+  );
+} catch (e) {
+  console.log('DB target: haiwezi kusomwa', e.message);
+}
+
 const sequelize = process.env.DATABASE_URL
   ? new Sequelize(process.env.DATABASE_URL, commonOptions)
   : new Sequelize(
