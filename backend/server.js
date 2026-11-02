@@ -32,7 +32,28 @@ const app = express();
 // MIDDLEWARE
 // ==========================================
 
-app.use(cors());
+const allowedOrigins = [
+  'http://localhost:5173',
+  'https://mp-frontend-xi.vercel.app',
+  ...(process.env.CORS_ORIGIN || '')
+    .split(',')
+    .map((s) => s.trim().replace(/\/+$/, ''))
+    .filter(Boolean),
+];
+
+const corsOptions = {
+  origin: (origin, cb) => {
+    const ok = !origin || allowedOrigins.includes(origin);
+    if (!ok) console.warn('CORS blocked origin:', origin);
+    cb(null, ok);
+  },
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  optionsSuccessStatus: 204,
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 
 app.use(express.json());
 
