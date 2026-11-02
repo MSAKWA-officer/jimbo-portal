@@ -13,7 +13,7 @@ export default function PublicLayout({ children }) {
       <main className="flex-1">{children}</main>
 
       {/* Footer */}
-      <footer className="bg-gradient-to-b from-[#0B2A4A] to-[#0a2340] text-blue-100">
+      <footer className="bg-gradient-to-b from-[#0B6B25] to-[#0a2340] text-blue-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12 grid gap-10 md:grid-cols-3">
           <div>
             <h3 className="text-white font-bold text-lg">Citizens’ Requests Management System</h3>

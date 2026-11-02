@@ -39,7 +39,7 @@ const getPageLabel = (pathname) => {
   return match ? match.label : 'Dashboard';
 };
 
-const Header = ({ onToggleSidebar }) => {
+const Header = ({ onToggleSidebar, sidebarOpen = true }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -87,14 +87,24 @@ const Header = ({ onToggleSidebar }) => {
   return (
     <>
       {/* ===== TOP NAVBAR (fixed) ===== */}
-      <header className="fixed top-0 inset-x-0 z-50 h-[75px] flex bg-navy border-b-[3px] border-navy-line">
+      <header className="fixed top-0 inset-x-0 z-50 h-[75px] flex bg-flag-green border-b-[3px] border-flag-yellow">
+        {/* Tanzania flag band: green | yellow-black-yellow diagonal | blue */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute right-0 top-0 z-0 h-full w-[170px] sm:w-[260px]"
+          style={{
+            background:
+              'linear-gradient(135deg, transparent 40%, #FCD116 40%, #FCD116 44%, #000000 44%, #000000 66%, #FCD116 66%, #FCD116 70%, #00A3DD 70%)',
+          }}
+        />
+
         {/* Logo block */}
         <div className="hidden sm:flex w-[132px] shrink-0 bg-white items-center justify-center px-2">
           <img src="/logo.jpeg" alt="Logo" className="max-h-[56px] w-full object-contain" />
         </div>
 
         {/* System title */}
-        <div className="flex-1 min-w-0 flex flex-col justify-center px-4 sm:px-5 text-white">
+        <div className="relative z-10 flex-1 min-w-0 flex flex-col justify-center px-4 sm:px-5 text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.4)]">
           <h1 className="text-[22px] sm:text-[26px] font-bold leading-none tracking-wide truncate">
             {SYSTEM_NAME}
           </h1>
@@ -106,10 +116,11 @@ const Header = ({ onToggleSidebar }) => {
         {/* Hamburger */}
         <button
           onClick={onToggleSidebar}
-          className="px-6 text-white hover:bg-white/10 transition"
-          aria-label="Toggle menu"
+          className="relative z-10 px-6 text-white hover:bg-white/10 transition"
+          aria-label={sidebarOpen ? 'Collapse menu to icons' : 'Expand menu'}
+          aria-expanded={sidebarOpen}
         >
-          <Menu size={26} />
+          <Menu size={26} className="drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]" />
         </button>
       </header>
 
@@ -117,7 +128,7 @@ const Header = ({ onToggleSidebar }) => {
       <div className="pt-[75px] bg-[#f1f1f1]">
         <div className="h-[54px] flex items-center justify-between px-4 sm:px-7">
           <p className="text-[15px] text-gray-500">
-            <Link to="/dashboard" className="hover:text-navy">Home</Link>
+            <Link to="/dashboard" className="hover:text-primary">Home</Link>
             <span className="mx-2">/</span>
             <span className="font-semibold text-gray-700">{pageLabel}</span>
           </p>
@@ -129,7 +140,7 @@ const Header = ({ onToggleSidebar }) => {
                 onClick={() => setMenuOpen((v) => !v)}
                 className="flex items-center gap-2 text-gray-500 hover:text-gray-800"
               >
-                <span className="w-8 h-8 rounded-full bg-navy text-white text-xs font-bold flex items-center justify-center">
+                <span className="w-8 h-8 rounded-full bg-primary text-white text-xs font-bold flex items-center justify-center">
                   {initial}
                 </span>
                 <span className="hidden sm:inline text-[15px] max-w-[140px] truncate">{name}</span>
@@ -179,7 +190,7 @@ const Header = ({ onToggleSidebar }) => {
 
         {/* Date / Role strip */}
         <div className="mx-4 sm:mx-6 flex items-center justify-between border-b border-gray-800 pb-1 text-[13px] font-bold">
-          <span className="text-blue-700">
+          <span className="text-primary">
             Date :{' '}
             {new Date().toLocaleDateString('sw-TZ', {
               year: 'numeric',

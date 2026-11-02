@@ -38,26 +38,26 @@ export default function PublicHeader() {
       <nav className="max-w-6xl mx-auto px-6 py-3 flex items-center justify-end gap-8">
         <Link
           to="/"
-          className="text-sm font-medium text-gray-700 hover:text-[#0B2A4A] flex items-center gap-1"
+          className="text-sm font-medium text-gray-700 hover:text-[#0B6B25] flex items-center gap-1"
         >
            HOME
         </Link>
         <Link
           to="/about"
-          className="text-sm font-medium text-gray-700 hover:text-[#0B2A4A] flex items-center gap-1"
+          className="text-sm font-medium text-gray-700 hover:text-[#0B6B25] flex items-center gap-1"
         >
            ABOUT
         </Link>
         <Link
           to="/contacts"
-          className="text-sm font-medium text-gray-700 hover:text-[#0B2A4A] flex items-center gap-1"
+          className="text-sm font-medium text-gray-700 hover:text-[#0B6B25] flex items-center gap-1"
         >
            CONTACTS
         </Link>
 
         <Link
           to="/login"
-          className="bg-[#0B2A4A] hover:bg-[#123a63] text-white text-sm font-semibold px-4 py-2 rounded-md flex items-center gap-2"
+          className="bg-[#0B6B25] hover:bg-[#123a63] text-white text-sm font-semibold px-4 py-2 rounded-md flex items-center gap-2"
         >
            LOGIN
         </Link>
